@@ -1,0 +1,2449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Hero</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- EmailJS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+/* ─────────────────────────────────────────────────────────────
+   DESIGN TOKENS
+───────────────────────────────────────────────────────────── */
+:root {
+  --bg0: #ffffff;
+  --bg1: #f8fbff;
+  --bg2: #f4f9ff;
+  --bg-info:    #E6F1FB;
+  --bg-success: #EAF3DE;
+  --bg-warning: #FAEEDA;
+  --bg-danger:  #FCEBEB;
+  --tx0: #1a1a1a;
+  --tx1: #555555;
+  --tx2: #888888;
+  --tx-info:    #003459;
+  --tx-success: #27500A;
+  --tx-warning: #633806;
+  --tx-danger:  #791F1F;
+  --bd:  rgba(0,0,0,0.10);
+  --bd2: rgba(0,0,0,0.20);
+  --blue:  #2857ce;
+  --blue2: #003459;
+  --green: #3B6D11;
+  --amber: #854F0B;
+  --red:   #A32D2D;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.06);
+  --shadow-md: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.10);
+}
+*, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+html, body { height:100%; }
+body { font-family:var(--font); background:var(--bg2); color:var(--tx0); font-size:13px; line-height:1.5; }
+
+/* ─────────────────────────────────────────────────────────────
+   EMAIL GATE OVERLAY
+───────────────────────────────────────────────────────────── */
+#emailGate {
+  position:fixed; inset:0;
+  background: linear-gradient(135deg, #f0f6ff 0%, #e8f2fb 100%);
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:32px 16px;
+  z-index:1000;
+}
+.gate-logo { text-align:center; margin-bottom:36px; }
+.gate-logo h1 { font-size:30px; font-weight:800; color:var(--blue2); letter-spacing:-0.03em; }
+.gate-logo h1 span { color:var(--blue); }
+.gate-logo p { font-size:13px; color:var(--tx2); margin-top:6px; }
+
+.email-form {
+  background:var(--bg0);
+  border:1px solid var(--bd);
+  border-radius:var(--r-xl);
+  padding:32px;
+  width:100%; max-width:420px;
+  box-shadow:var(--shadow-lg);
+}
+.email-form h2 { font-size:18px; font-weight:700; margin-bottom:8px; color:var(--tx0); text-align:center; }
+.email-form .sub { font-size:13px; color:var(--tx1); margin-bottom:24px; text-align:center; }
+.form-group { margin-bottom:18px; }
+.form-label { display:block; font-size:12px; font-weight:600; color:var(--tx1); margin-bottom:5px; }
+.form-req { color:var(--red); }
+.gate-input {
+  width:100%; padding:12px 14px;
+  font-size:14px; font-family:var(--font);
+  border:1.5px solid rgba(0,0,0,.15);
+  border-radius:var(--r-md);
+  background:var(--bg0); color:var(--tx0);
+  transition:border-color .15s, box-shadow .15s;
+}
+.gate-input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(40,87,206,.09); }
+.gate-input.error { border-color:var(--red); }
+.form-hint { font-size:11px; color:var(--tx2); margin-top:6px; }
+.form-error { font-size:11px; color:var(--red); margin-top:6px; display:none; }
+.submit-btn {
+  width:100%; padding:13px;
+  font-size:14px; font-weight:600;
+  border-radius:var(--r-md); cursor:pointer;
+  font-family:var(--font);
+  border:1px solid var(--blue);
+  background:var(--blue); color:#fff;
+  transition:all .15s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.submit-btn:hover:not(:disabled) { background:var(--blue2); transform:translateY(-1px); box-shadow:var(--shadow-md); }
+.submit-btn:disabled { opacity:.6; cursor:not-allowed; }
+
+.gate-spinner {
+  width:16px; height:16px;
+  border:2px solid rgba(255,255,255,.4);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:spin .6s linear infinite;
+  display:none;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ─────────────────────────────────────────────────────────────
+   LOGIN / ROLE SELECTION
+───────────────────────────────────────────────────────────── */
+#loginPage {
+  min-height:100vh;
+  background: linear-gradient(135deg, #f0f6ff 0%, #e8f2fb 100%);
+  display:none; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:32px 16px;
+}
+.login-logo { text-align:center; margin-bottom:36px; }
+.login-logo h1 { font-size:30px; font-weight:800; color:var(--blue2); letter-spacing:-0.03em; }
+.login-logo h1 span { color:var(--blue); }
+.login-logo p { font-size:13px; color:var(--tx2); margin-top:6px; }
+
+/* Email badge shown on login page */
+.user-email-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  background:var(--bg-info); color:var(--tx-info);
+  border:0.5px solid #a8c8ef;
+  padding:5px 12px; border-radius:20px;
+  font-size:12px; font-weight:600; margin-top:10px;
+}
+
+.role-grid {
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:16px; width:100%; max-width:820px;
+}
+@media(max-width:600px){ .role-grid{grid-template-columns:1fr;} }
+
+.role-card {
+  background:var(--bg0);
+  border:1px solid var(--bd);
+  border-radius:var(--r-xl);
+  padding:24px 22px;
+  cursor:pointer; transition:all .18s;
+  box-shadow:var(--shadow-sm);
+  display:flex; gap:16px; align-items:flex-start;
+  position:relative; overflow:hidden;
+}
+.role-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  border-radius:var(--r-xl) var(--r-xl) 0 0;
+}
+.role-card.gov::before  { background:var(--blue); }
+.role-card.mfr::before  { background:var(--green); }
+.role-card.ph::before   { background:var(--amber); }
+.role-card.pub::before  { background:var(--tx2); }
+.role-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-lg); border-color:var(--blue); }
+.role-card-icon {
+  width:48px; height:48px; border-radius:var(--r-md);
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; flex-shrink:0;
+}
+.role-card h3 { font-size:15px; font-weight:700; margin-bottom:4px; }
+.role-card p  { font-size:12px; color:var(--tx1); line-height:1.55; }
+.role-card .tag-row { display:flex; flex-wrap:wrap; gap:4px; margin-top:10px; }
+.tag {
+  font-size:10px; font-weight:600;
+  padding:2px 8px; border-radius:10px; display:inline-block;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   APP SHELL
+───────────────────────────────────────────────────────────── */
+#appShell { display:none; height:100vh; flex-direction:column; overflow:hidden; }
+
+.topbar {
+  background:var(--bg0); border-bottom:0.5px solid var(--bd);
+  height:52px; flex-shrink:0;
+  display:flex; align-items:center; padding:0 24px; gap:16px;
+  box-shadow:var(--shadow-sm); z-index:20;
+}
+.topbar-brand { font-size:18px; font-weight:800; color:var(--blue2); letter-spacing:-0.02em; flex-shrink:0; }
+.topbar-brand span { color:var(--blue); }
+
+.topbar-nav { display:flex; align-items:center; gap:2px; flex:1; overflow-x:auto; scrollbar-width:none; }
+.topbar-nav::-webkit-scrollbar { display:none; }
+.tnav-item {
+  display:flex; align-items:center; gap:6px; padding:6px 14px;
+  font-size:13px; font-weight:500; color:var(--tx1);
+  border-radius:var(--r-md); cursor:pointer; white-space:nowrap;
+  transition:all .15s; border:none; background:none; font-family:var(--font);
+  position:relative;
+}
+.tnav-item:hover { background:var(--bg1); color:var(--tx0); }
+.tnav-item.active { background:var(--bg-info); color:var(--blue2); font-weight:600; }
+.tnav-item.active::after {
+  content:''; position:absolute; bottom:-14px; left:50%; transform:translateX(-50%);
+  width:28px; height:3px; background:var(--blue); border-radius:2px 2px 0 0;
+}
+.tnav-icon { font-size:14px; }
+
+.topbar-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.user-chip {
+  display:flex; align-items:center; gap:8px;
+  padding:4px 12px 4px 5px; border:0.5px solid var(--bd);
+  border-radius:24px; background:var(--bg1);
+  cursor:pointer; transition:all .15s;
+}
+.user-chip:hover { background:var(--bg2); box-shadow:var(--shadow-sm); }
+.uc-avatar { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+.uc-info { line-height:1.3; }
+.uc-name { font-size:11px; font-weight:600; color:var(--tx0); }
+.uc-role { font-size:10px; font-weight:600; }
+.uc-caret { font-size:9px; color:var(--tx2); }
+
+.app-body { display:flex; flex:1; overflow:hidden; }
+.content { flex:1; overflow-y:auto; padding:24px; background:var(--bg2); }
+
+/* ─────────────────────────────────────────────────────────────
+   VIEWS
+───────────────────────────────────────────────────────────── */
+.view { display:none; animation:fadeUp .22s ease; }
+.view.active { display:block; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+
+.page-title { font-size:20px; font-weight:700; color:var(--tx0); margin-bottom:4px; }
+.page-sub   { font-size:13px; color:var(--tx1); margin-bottom:20px; }
+
+/* ─────────────────────────────────────────────────────────────
+   KPI
+───────────────────────────────────────────────────────────── */
+.kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin-bottom:24px; }
+.kpi { background:var(--bg0); border:0.5px solid var(--bd); border-radius:var(--r-lg); padding:18px 20px; box-shadow:var(--shadow-sm); position:relative; overflow:hidden; }
+.kpi::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+.kpi.k-blue::before  { background:var(--blue); }
+.kpi.k-green::before { background:var(--green); }
+.kpi.k-amber::before { background:var(--amber); }
+.kpi.k-red::before   { background:var(--red); }
+.kpi-icon  { font-size:20px; margin-bottom:8px; }
+.kpi-label { font-size:11px; font-weight:600; color:var(--tx2); text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; }
+.kpi-value { font-size:28px; font-weight:700; line-height:1; }
+.kpi.k-blue  .kpi-value { color:var(--blue); }
+.kpi.k-green .kpi-value { color:var(--green); }
+.kpi.k-amber .kpi-value { color:var(--amber); }
+.kpi.k-red   .kpi-value { color:var(--red); }
+.kpi-sub { font-size:11px; color:var(--tx2); margin-top:4px; }
+
+/* ─────────────────────────────────────────────────────────────
+   CARD
+───────────────────────────────────────────────────────────── */
+.card { background:var(--bg0); border:0.5px solid var(--bd); border-radius:var(--r-lg); margin-bottom:20px; overflow:hidden; box-shadow:var(--shadow-sm); transition:box-shadow .18s; }
+.card:hover { box-shadow:var(--shadow-md); }
+.card-head { padding:13px 20px; border-bottom:0.5px solid var(--bd); display:flex; align-items:center; justify-content:space-between; background:var(--bg1); }
+.card-head h2 { font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.card-head-actions { display:flex; gap:8px; align-items:center; }
+.card-body { padding:20px; }
+
+/* ─────────────────────────────────────────────────────────────
+   TABLE
+───────────────────────────────────────────────────────────── */
+.table { width:100%; border-collapse:collapse; font-size:13px; }
+.table th { padding:10px 14px; text-align:left; font-size:11px; font-weight:700; color:var(--tx2); text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid var(--bd); background:var(--bg1); white-space:nowrap; }
+.table td { padding:12px 14px; border-bottom:0.5px solid var(--bd); color:var(--tx0); vertical-align:middle; }
+.table tr:last-child td { border-bottom:none; }
+.table tr:hover td { background:var(--bg1); }
+.table .actions { display:flex; gap:6px; }
+.table-empty td { text-align:center; padding:32px; color:var(--tx2); font-style:italic; }
+
+/* ─────────────────────────────────────────────────────────────
+   PILLS
+───────────────────────────────────────────────────────────── */
+.pill { display:inline-block; padding:3px 9px; border-radius:12px; font-size:11px; font-weight:600; }
+.p-active, .p-valid, .p-available { background:var(--bg-success); color:var(--tx-success); }
+.p-pending, .p-expiring           { background:var(--bg-warning);  color:var(--tx-warning); }
+.p-revoked, .p-expired, .p-error  { background:var(--bg-danger);   color:var(--tx-danger);  }
+.p-info, .p-transferred           { background:var(--bg-info);     color:var(--tx-info);    }
+.p-dispensed                      { background:var(--bg-info);     color:var(--tx-info);    }
+.p-draft, .p-stock                { background:#f0efea; color:#555; }
+
+/* ─────────────────────────────────────────────────────────────
+   BUTTONS
+───────────────────────────────────────────────────────────── */
+.btn { display:inline-flex; align-items:center; gap:5px; padding:7px 14px; font-size:12px; font-weight:600; border-radius:var(--r-md); cursor:pointer; font-family:var(--font); border:0.5px solid var(--bd2); background:var(--bg0); color:var(--tx0); transition:all .15s; white-space:nowrap; }
+.btn:hover { background:var(--bg1); box-shadow:var(--shadow-sm); }
+.btn:active { transform:scale(.98); }
+.btn-primary { background:var(--blue); color:#fff; border-color:var(--blue); }
+.btn-primary:hover { background:var(--blue2); }
+.btn-success { background:var(--green); color:#fff; border-color:var(--green); }
+.btn-success:hover { background:#27500A; }
+.btn-danger { background:transparent; border-color:var(--red); color:var(--red); }
+.btn-danger:hover { background:var(--bg-danger); }
+.btn-warning { background:transparent; border-color:var(--amber); color:var(--amber); }
+.btn-warning:hover { background:var(--bg-warning); }
+.btn-sm { padding:5px 10px; font-size:11px; }
+.btn[disabled] { opacity:.45; cursor:not-allowed; pointer-events:none; }
+
+/* ─────────────────────────────────────────────────────────────
+   FORMS
+───────────────────────────────────────────────────────────── */
+.form-input, .form-select, .form-textarea { width:100%; padding:9px 11px; font-size:13px; font-family:var(--font); border:1px solid rgba(0,0,0,.22); border-radius:var(--r-md); background:var(--bg0); color:var(--tx0); transition:border-color .15s; }
+.form-input:focus, .form-select:focus, .form-textarea:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(40,87,206,.09); }
+.form-input[readonly] { background:var(--bg1); color:var(--tx1); }
+.form-hint { font-size:11px; color:var(--tx2); margin-top:4px; }
+.form-row  { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.form-row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+
+/* ─────────────────────────────────────────────────────────────
+   ALERTS
+───────────────────────────────────────────────────────────── */
+.alert { display:flex; align-items:flex-start; gap:10px; padding:11px 14px; border-radius:var(--r-md); font-size:13px; margin-bottom:14px; }
+.alert-icon { font-size:15px; flex-shrink:0; margin-top:1px; }
+.a-success { background:var(--bg-success); color:var(--tx-success); border:0.5px solid #b7d98a; }
+.a-danger  { background:var(--bg-danger);  color:var(--tx-danger);  border:0.5px solid #f5b8b8; }
+.a-warning { background:var(--bg-warning); color:var(--tx-warning); border:0.5px solid #f0cf9a; }
+.a-info    { background:var(--bg-info);    color:var(--tx-info);    border:0.5px solid #a8c8ef; }
+
+/* ─────────────────────────────────────────────────────────────
+   TOOLBAR
+───────────────────────────────────────────────────────────── */
+.toolbar { display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.toolbar-spacer { flex:1; }
+.search-box { display:flex; align-items:center; gap:8px; padding:6px 12px; border:0.5px solid rgba(0,0,0,.2); border-radius:var(--r-md); background:var(--bg0); font-size:13px; color:var(--tx0); min-width:200px; }
+.search-box input { border:none; outline:none; background:transparent; font-size:13px; font-family:var(--font); color:var(--tx0); width:100%; }
+.filter-select { padding:6px 10px; font-size:12px; font-family:var(--font); border:0.5px solid rgba(0,0,0,.2); border-radius:var(--r-md); background:var(--bg0); color:var(--tx0); }
+
+/* ─────────────────────────────────────────────────────────────
+   TIMELINE
+───────────────────────────────────────────────────────────── */
+.tl { padding:4px 0; }
+.tl-item { display:flex; gap:14px; margin-bottom:14px; }
+.tl-dot-col { display:flex; flex-direction:column; align-items:center; }
+.tl-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+.tl-line { flex:1; width:2px; background:var(--bd); margin:5px auto 0; }
+.tl-body { flex:1; padding-bottom:2px; }
+.tl-title { font-size:13px; font-weight:500; color:var(--tx0); }
+.tl-time  { font-size:11px; color:var(--tx2); margin-top:2px; }
+
+/* ─────────────────────────────────────────────────────────────
+   VERIFICATION PAGE
+───────────────────────────────────────────────────────────── */
+.verify-hero { max-width:680px; margin:0 auto 24px; text-align:center; padding:40px 24px 32px; }
+.verify-hero h2 { font-size:22px; font-weight:700; margin-bottom:8px; }
+.verify-hero p  { font-size:14px; color:var(--tx1); margin-bottom:24px; }
+.verify-input-row { display:flex; gap:10px; max-width:580px; margin:0 auto; }
+.verify-input-row input { flex:1; padding:11px 14px; font-size:14px; font-family:var(--font); border:1.5px solid rgba(0,0,0,.22); border-radius:var(--r-md); background:var(--bg0); color:var(--tx0); transition:border-color .15s; }
+.verify-input-row input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(40,87,206,.09); }
+.verify-hint { font-size:11px; color:var(--tx2); margin-top:8px; }
+.verify-result { max-width:640px; margin:0 auto; }
+.info-row { display:flex; padding:10px 0; border-bottom:0.5px solid var(--bd); font-size:13px; }
+.info-row:last-child { border-bottom:none; }
+.info-label { font-weight:600; color:var(--tx1); width:180px; flex-shrink:0; }
+.info-value { color:var(--tx0); }
+.chain { margin-top:4px; }
+.chain-item { display:flex; align-items:flex-start; gap:14px; padding:10px 0; border-bottom:0.5px solid var(--bd); font-size:13px; }
+.chain-item:last-child { border-bottom:none; }
+.chain-num { width:22px; height:22px; border-radius:50%; background:var(--bg-info); color:var(--tx-info); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; margin-top:1px; }
+.chain-detail { flex:1; }
+.chain-route  { font-weight:600; color:var(--tx0); }
+.chain-date   { font-size:11px; color:var(--tx2); margin-top:2px; }
+
+/* ─────────────────────────────────────────────────────────────
+   CODE + MISC
+───────────────────────────────────────────────────────────── */
+code { font-family:'SF Mono','Fira Mono','Courier New',monospace; font-size:11px; background:var(--bg1); padding:2px 6px; border-radius:4px; color:var(--tx1); }
+.divider { height:0.5px; background:var(--bd); margin:14px 0; }
+.section-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--tx2); margin-bottom:10px; }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+@media(max-width:700px){ .two-col{grid-template-columns:1fr;} }
+
+/* ─────────────────────────────────────────────────────────────
+   MODALS
+───────────────────────────────────────────────────────────── */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.42); z-index:200; align-items:center; justify-content:center; backdrop-filter:blur(2px); }
+.modal-overlay.open { display:flex; }
+.modal-box { background:var(--bg0); border:0.5px solid var(--bd); border-radius:var(--r-xl); width:520px; max-width:95vw; max-height:88vh; overflow-y:auto; box-shadow:var(--shadow-lg); animation:fadeUp .2s ease; }
+.modal-head { padding:16px 20px; border-bottom:0.5px solid var(--bd); display:flex; justify-content:space-between; align-items:center; background:var(--bg1); position:sticky; top:0; border-radius:var(--r-xl) var(--r-xl) 0 0; }
+.modal-head h3 { font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.modal-close { background:none; border:none; font-size:18px; cursor:pointer; color:var(--tx2); width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; transition:background .15s; }
+.modal-close:hover { background:var(--bg2); color:var(--tx0); }
+.modal-body { padding:20px; }
+.modal-foot { padding:14px 20px; border-top:0.5px solid var(--bd); display:flex; justify-content:flex-end; gap:10px; background:var(--bg1); border-radius:0 0 var(--r-xl) var(--r-xl); }
+
+/* ─────────────────────────────────────────────────────────────
+   TOAST
+───────────────────────────────────────────────────────────── */
+#toastArea { position:fixed; bottom:24px; right:24px; display:flex; flex-direction:column; gap:8px; z-index:9999; }
+.toast { min-width:280px; max-width:380px; padding:12px 16px; border-radius:var(--r-md); font-size:13px; font-weight:500; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow-lg); animation:slideIn .22s ease; transition:opacity .4s; }
+@keyframes slideIn { from{transform:translateX(40px);opacity:0;} to{transform:translateX(0);opacity:1;} }
+.t-success { background:var(--bg-success); color:var(--tx-success); border-left:4px solid var(--green); }
+.t-danger  { background:var(--bg-danger);  color:var(--tx-danger);  border-left:4px solid var(--red); }
+.t-warning { background:var(--bg-warning); color:var(--tx-warning); border-left:4px solid var(--amber); }
+.t-info    { background:var(--bg-info);    color:var(--tx-info);    border-left:4px solid var(--blue); }
+
+/* ─────────────────────────────────────────────────────────────
+   CLARITY PMS — EMBEDDED APP
+───────────────────────────────────────────────────────────── */
+#videoPage {
+  display: none;
+  height: 100vh;
+  flex-direction: column;
+  overflow: hidden;
+  background: #0f1724;
+}
+
+/* ── PMS Login screen ── */
+#pmsLogin {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #0f1724 0%, #1a2640 100%);
+}
+.pms-login-box {
+  background: #fff; border-radius: 16px;
+  width: 380px; max-width: 94vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  overflow: hidden;
+}
+.pms-login-header {
+  background: linear-gradient(135deg, #1e3a5f, #2857ce);
+  padding: 32px 28px 24px;
+  text-align: center; color: #fff;
+}
+.pms-login-header .pms-logo { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 4px; }
+.pms-login-header .pms-tagline { font-size: 12px; opacity: .75; }
+.pms-login-body { padding: 28px; }
+.pms-field { margin-bottom: 16px; }
+.pms-field label { display: block; font-size: 11px; font-weight: 700; color: #555; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .05em; }
+.pms-field input {
+  width: 100%; padding: 10px 13px; font-size: 14px;
+  border: 1.5px solid #dde3ee; border-radius: 8px;
+  font-family: var(--font); color: #1a1a1a;
+  transition: border-color .15s;
+}
+.pms-field input:focus { outline: none; border-color: #2857ce; box-shadow: 0 0 0 3px rgba(40,87,206,.09); }
+.pms-login-btn {
+  width: 100%; padding: 12px; font-size: 14px; font-weight: 700;
+  background: #2857ce; color: #fff; border: none;
+  border-radius: 8px; cursor: pointer; font-family: var(--font);
+  transition: background .15s;
+}
+.pms-login-btn:hover { background: #1e3a9e; }
+.pms-login-hint { font-size: 11px; color: #999; text-align: center; margin-top: 14px; }
+.pms-creds { background: #f0f6ff; border-radius: 8px; padding: 10px 14px; margin-bottom: 18px; font-size: 12px; color: #2857ce; }
+.pms-creds strong { display: block; margin-bottom: 3px; color: #003459; }
+
+/* ── PMS App shell ── */
+#pmsApp { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.pms-topbar {
+  height: 52px; flex-shrink: 0;
+  background: #1e3a5f;
+  display: flex; align-items: center; padding: 0 20px; gap: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.pms-brand { font-size: 17px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+.pms-brand span { color: #60a5fa; }
+.pms-nav { display: flex; align-items: center; gap: 2px; flex: 1; overflow-x: auto; scrollbar-width: none; }
+.pms-nav::-webkit-scrollbar { display: none; }
+.pms-nav-btn {
+  padding: 6px 14px; font-size: 12px; font-weight: 600;
+  color: rgba(255,255,255,.65); border: none; background: none;
+  border-radius: 7px; cursor: pointer; white-space: nowrap;
+  font-family: var(--font); transition: all .15s;
+}
+.pms-nav-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
+.pms-nav-btn.active { background: rgba(255,255,255,.18); color: #fff; }
+.pms-user {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 12px 4px 5px; border-radius: 24px;
+  background: rgba(255,255,255,.1); cursor: pointer;
+}
+.pms-user:hover { background: rgba(255,255,255,.18); }
+.pms-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #60a5fa; color: #1e3a5f;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 800;
+}
+.pms-user-name { font-size: 12px; font-weight: 600; color: #fff; }
+.pms-user-role { font-size: 10px; color: rgba(255,255,255,.6); }
+.pms-logout { font-size: 11px; color: rgba(255,255,255,.5); background: none; border: none; cursor: pointer; margin-left: 4px; padding: 2px 6px; border-radius: 4px; font-family: var(--font); }
+.pms-logout:hover { color: #fff; background: rgba(255,255,255,.1); }
+
+.pms-body { display: flex; flex: 1; overflow: hidden; }
+.pms-sidebar {
+  width: 200px; flex-shrink: 0;
+  background: #fff; border-right: 0.5px solid #e5e9f0;
+  overflow-y: auto; padding: 16px 10px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.pms-sidebar-section { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #aab; padding: 12px 8px 5px; }
+.pms-sidebar-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border-radius: 7px;
+  font-size: 13px; font-weight: 500; color: #444;
+  cursor: pointer; transition: all .15s; border: none; background: none;
+  font-family: var(--font); text-align: left; width: 100%;
+}
+.pms-sidebar-item:hover { background: #f0f4ff; color: #2857ce; }
+.pms-sidebar-item.active { background: #e8f0fe; color: #2857ce; font-weight: 700; }
+.pms-sidebar-item .si-icon { font-size: 15px; width: 20px; text-align: center; }
+
+.pms-content { flex: 1; overflow-y: auto; padding: 24px; background: #f4f7fb; }
+.pms-view { display: none; animation: fadeUp .2s ease; }
+.pms-view.active { display: block; }
+
+/* ── PMS KPI grid ── */
+.pms-kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.pms-kpi {
+  background: #fff; border-radius: 12px; padding: 18px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06); border: 0.5px solid #e5e9f0;
+  position: relative; overflow: hidden;
+}
+.pms-kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.pms-kpi.kc-blue::before  { background: #2857ce; }
+.pms-kpi.kc-green::before { background: #16a34a; }
+.pms-kpi.kc-amber::before { background: #d97706; }
+.pms-kpi.kc-red::before   { background: #dc2626; }
+.pms-kpi.kc-purple::before{ background: #7c3aed; }
+.pms-kpi-icon { font-size: 20px; margin-bottom: 8px; }
+.pms-kpi-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #888; margin-bottom: 4px; }
+.pms-kpi-val { font-size: 26px; font-weight: 800; line-height: 1; }
+.pms-kpi.kc-blue  .pms-kpi-val { color: #2857ce; }
+.pms-kpi.kc-green .pms-kpi-val { color: #16a34a; }
+.pms-kpi.kc-amber .pms-kpi-val { color: #d97706; }
+.pms-kpi.kc-red   .pms-kpi-val { color: #dc2626; }
+.pms-kpi.kc-purple .pms-kpi-val{ color: #7c3aed; }
+.pms-kpi-sub { font-size: 11px; color: #aaa; margin-top: 4px; }
+
+/* ── PMS Card ── */
+.pms-card { background: #fff; border-radius: 12px; border: 0.5px solid #e5e9f0; box-shadow: 0 1px 4px rgba(0,0,0,.05); margin-bottom: 20px; overflow: hidden; }
+.pms-card-head { padding: 12px 18px; border-bottom: 0.5px solid #edf0f5; display: flex; align-items: center; justify-content: space-between; background: #fafbfd; }
+.pms-card-head h3 { font-size: 13px; font-weight: 700; color: #1a1a1a; display: flex; align-items: center; gap: 7px; }
+.pms-card-body { padding: 18px; }
+
+/* ── PMS Table ── */
+.pms-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pms-table th { padding: 9px 13px; text-align: left; font-size: 10px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #edf0f5; background: #fafbfd; white-space: nowrap; }
+.pms-table td { padding: 11px 13px; border-bottom: 0.5px solid #f0f2f5; color: #1a1a1a; vertical-align: middle; }
+.pms-table tr:last-child td { border-bottom: none; }
+.pms-table tr:hover td { background: #f7f9ff; }
+
+/* ── PMS status pills ── */
+.ps { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.ps-in     { background: #dcfce7; color: #166534; }
+.ps-out    { background: #fef9c3; color: #854d0e; }
+.ps-res    { background: #dbeafe; color: #1e40af; }
+.ps-cancel { background: #fee2e2; color: #991b1b; }
+.ps-avail  { background: #dcfce7; color: #166534; }
+.ps-occ    { background: #fef3c7; color: #92400e; }
+.ps-maint  { background: #fee2e2; color: #991b1b; }
+.ps-paid   { background: #dcfce7; color: #166534; }
+.ps-pend   { background: #fef9c3; color: #854d0e; }
+.ps-part   { background: #dbeafe; color: #1e40af; }
+
+/* ── PMS Buttons ── */
+.pms-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 13px; font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer; font-family: var(--font); border: 1px solid #dde3ee; background: #fff; color: #333; transition: all .14s; white-space: nowrap; }
+.pms-btn:hover { background: #f0f4ff; border-color: #b0c0e0; }
+.pms-btn-primary { background: #2857ce; color: #fff; border-color: #2857ce; }
+.pms-btn-primary:hover { background: #1e3a9e; }
+.pms-btn-sm { padding: 4px 9px; font-size: 11px; }
+.pms-btn-success { background: #16a34a; color: #fff; border-color: #16a34a; }
+.pms-btn-danger  { background: transparent; border-color: #dc2626; color: #dc2626; }
+.pms-btn-danger:hover  { background: #fee2e2; }
+
+/* ── PMS toolbar ── */
+.pms-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.pms-search { display: flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid #dde3ee; border-radius: 8px; background: #fff; min-width: 200px; }
+.pms-search input { border: none; outline: none; background: transparent; font-size: 13px; font-family: var(--font); color: #1a1a1a; width: 100%; }
+.pms-filter { padding: 6px 10px; font-size: 12px; font-family: var(--font); border: 1px solid #dde3ee; border-radius: 8px; background: #fff; color: #333; }
+.pms-spacer { flex: 1; }
+
+/* ── Calendar grid ── */
+.room-grid { display: grid; grid-template-columns: 120px repeat(7, 1fr); gap: 2px; font-size: 12px; }
+.rg-header { background: #1e3a5f; color: #fff; padding: 8px; border-radius: 6px; text-align: center; font-weight: 700; font-size: 11px; }
+.rg-room   { background: #fff; border: 1px solid #e5e9f0; padding: 8px 10px; border-radius: 6px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 6px; }
+.rg-cell   { background: #fff; border: 1px solid #e5e9f0; border-radius: 6px; min-height: 48px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .13s; position: relative; }
+.rg-cell:hover { background: #f0f4ff; }
+.rg-booked { background: #dbeafe; border-color: #93c5fd; }
+.rg-booked:hover { background: #bfdbfe; }
+.rg-checkin{ background: #dcfce7; border-color: #86efac; }
+.rg-checkout{background: #fef9c3; border-color: #fde68a; }
+.rg-maint  { background: #fee2e2; border-color: #fca5a5; }
+.rg-label  { font-size: 10px; font-weight: 700; color: inherit; text-align: center; line-height: 1.3; }
+
+/* ── PMS Modal ── */
+.pms-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 500; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+.pms-modal.open { display: flex; }
+.pms-modal-box { background: #fff; border-radius: 14px; width: 520px; max-width: 95vw; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25); animation: fadeUp .2s ease; }
+.pms-modal-head { padding: 16px 20px; border-bottom: 0.5px solid #edf0f5; display: flex; justify-content: space-between; align-items: center; background: #fafbfd; border-radius: 14px 14px 0 0; position: sticky; top: 0; }
+.pms-modal-head h3 { font-size: 15px; font-weight: 700; color: #1a1a1a; }
+.pms-modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: #aaa; border-radius: 6px; padding: 2px 6px; }
+.pms-modal-close:hover { background: #f0f0f0; color: #333; }
+.pms-modal-body { padding: 20px; }
+.pms-modal-foot { padding: 14px 20px; border-top: 0.5px solid #edf0f5; display: flex; justify-content: flex-end; gap: 10px; background: #fafbfd; border-radius: 0 0 14px 14px; }
+.pms-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.pms-form-group { margin-bottom: 14px; }
+.pms-form-group label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #666; margin-bottom: 5px; }
+.pms-form-group input, .pms-form-group select, .pms-form-group textarea { width: 100%; padding: 8px 11px; font-size: 13px; font-family: var(--font); border: 1.5px solid #dde3ee; border-radius: 7px; background: #fff; color: #1a1a1a; transition: border-color .14s; }
+.pms-form-group input:focus, .pms-form-group select:focus, .pms-form-group textarea:focus { outline: none; border-color: #2857ce; }
+
+/* ── Two-col layout ── */
+.pms-two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media(max-width:700px){ .pms-two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STEP 1 — EMAIL GATE
+═══════════════════════════════════════════════════════════ -->
+<div id="emailGate">
+  <div class="gate-logo">
+    <h1>Agent<span>Hero</span></h1>
+    <!-- <p>Medical Supply Chain Management <strong>Prototype</strong></p> -->
+  </div>
+  <div class="email-form">
+    <h2>Enter your email to continue</h2>
+    <p class="sub">You'll be sent to the role selector right away.</p>
+    <div class="form-group">
+      <label class="form-label">Email address <span class="form-req">*</span></label>
+      <input type="email" id="userEmail" class="gate-input" placeholder="your.email@example.com" required autocomplete="email">
+      <div class="form-hint" id="emailHint">Please use your official email id</div>
+      <div class="form-error" id="emailError">Please enter a valid email address.</div>
+    </div>
+    <button class="submit-btn" id="gateSubmitBtn" onclick="handleEmailSubmit()">
+      <span id="gateBtnText">Login to Watch Demo →</span>
+      <div class="gate-spinner" id="gateSpinner"></div>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STEP 2 — CLARITY PMS (fully self-contained)
+═══════════════════════════════════════════════════════════ -->
+<div id="videoPage" style="display:none;height:100vh;flex-direction:column;overflow:hidden;">
+
+  <!-- ── PMS Login ── -->
+  <div id="pmsLogin" style="flex:1;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f1724 0%,#1a2640 100%);">
+    <div class="pms-login-box">
+      <div class="pms-login-header">
+        <div class="pms-logo">✦ Clarity PMS</div>
+        <div class="pms-tagline">Property Management System</div>
+      </div>
+      <div class="pms-login-body">
+        <div class="pms-creds">
+          <strong>Demo credentials</strong>
+          Username: <b>admin</b> &nbsp;·&nbsp; Password: <b>admin123</b>
+        </div>
+        <div class="pms-field">
+          <label>Username</label>
+          <input type="text" id="pmsUser" value="admin" placeholder="admin">
+        </div>
+        <div class="pms-field">
+          <label>Password</label>
+          <input type="password" id="pmsPwd" value="admin123" placeholder="••••••••"
+                 onkeydown="if(event.key==='Enter')pmsDoLogin()">
+        </div>
+        <div id="pmsLoginErr" style="display:none;color:#dc2626;font-size:12px;margin-bottom:10px;">Invalid credentials. Try admin / admin123.</div>
+        <button class="pms-login-btn" onclick="pmsDoLogin()">Sign In →</button>
+        <div class="pms-login-hint">Powered by Agent<strong>Hero</strong> · Demo environment</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PMS App Shell ── -->
+  <div id="pmsApp" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+
+    <!-- Top bar -->
+    <div class="pms-topbar">
+      <div class="pms-brand">✦ Clarity<span>PMS</span></div>
+      <nav class="pms-nav" id="pmsNav">
+        <button class="pms-nav-btn active" data-view="pmsDash">🏠 Dashboard</button>
+        <button class="pms-nav-btn" data-view="pmsReservations">📋 Reservations</button>
+        <button class="pms-nav-btn" data-view="pmsFrontDesk">🛎 Front Desk</button>
+        <button class="pms-nav-btn" data-view="pmsRooms">🛏 Rooms</button>
+        <button class="pms-nav-btn" data-view="pmsGuests">👤 Guests</button>
+        <button class="pms-nav-btn" data-view="pmsBilling">💳 Billing</button>
+        <button class="pms-nav-btn" data-view="pmsReports">📊 Reports</button>
+      </nav>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <div class="pms-user">
+          <div class="pms-avatar">AD</div>
+          <div>
+            <div class="pms-user-name">Admin User</div>
+            <div class="pms-user-role">Front Office Manager</div>
+          </div>
+        </div>
+        <button class="pms-logout" onclick="pmsLogout()">⏻ Logout</button>
+      </div>
+    </div>
+
+    <div class="pms-body">
+      <!-- Sidebar -->
+      <aside class="pms-sidebar" id="pmsSidebar">
+        <div class="pms-sidebar-section">Overview</div>
+        <button class="pms-sidebar-item active" data-view="pmsDash"><span class="si-icon">🏠</span> Dashboard</button>
+        <div class="pms-sidebar-section">Operations</div>
+        <button class="pms-sidebar-item" data-view="pmsReservations"><span class="si-icon">📋</span> Reservations</button>
+        <button class="pms-sidebar-item" data-view="pmsFrontDesk"><span class="si-icon">🛎</span> Front Desk</button>
+        <button class="pms-sidebar-item" data-view="pmsRooms"><span class="si-icon">🛏</span> Room Status</button>
+        <button class="pms-sidebar-item" data-view="pmsCalendar"><span class="si-icon">📅</span> Calendar</button>
+        <div class="pms-sidebar-section">Guest & Finance</div>
+        <button class="pms-sidebar-item" data-view="pmsGuests"><span class="si-icon">👤</span> Guests</button>
+        <button class="pms-sidebar-item" data-view="pmsBilling"><span class="si-icon">💳</span> Billing</button>
+        <div class="pms-sidebar-section">Analytics</div>
+        <button class="pms-sidebar-item" data-view="pmsReports"><span class="si-icon">📊</span> Reports</button>
+        <button class="pms-sidebar-item" data-view="pmsSettings"><span class="si-icon">⚙️</span> Settings</button>
+      </aside>
+
+      <!-- Content -->
+      <main class="pms-content">
+
+        <!-- DASHBOARD -->
+        <div id="pmsDash" class="pms-view active">
+          <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Good morning 👋</div>
+          <div style="font-size:13px;color:#888;margin-bottom:20px;">Tuesday, 9 June 2026 · Grand Horizon Hotel</div>
+          <div class="pms-kpi-row">
+            <div class="pms-kpi kc-blue"><div class="pms-kpi-icon">🛏</div><div class="pms-kpi-label">Occupied</div><div class="pms-kpi-val">42</div><div class="pms-kpi-sub">of 68 rooms</div></div>
+            <div class="pms-kpi kc-green"><div class="pms-kpi-icon">📥</div><div class="pms-kpi-label">Check-ins Today</div><div class="pms-kpi-val">8</div><div class="pms-kpi-sub">3 already arrived</div></div>
+            <div class="pms-kpi kc-amber"><div class="pms-kpi-icon">📤</div><div class="pms-kpi-label">Check-outs</div><div class="pms-kpi-val">5</div><div class="pms-kpi-sub">1 pending folio</div></div>
+            <div class="pms-kpi kc-purple"><div class="pms-kpi-icon">💰</div><div class="pms-kpi-label">Revenue Today</div><div class="pms-kpi-val">₹1.4L</div><div class="pms-kpi-sub">↑ 12% vs yesterday</div></div>
+            <div class="pms-kpi kc-red"><div class="pms-kpi-icon">🔧</div><div class="pms-kpi-label">Maintenance</div><div class="pms-kpi-val">3</div><div class="pms-kpi-sub">Rooms out of order</div></div>
+          </div>
+          <div class="pms-two">
+            <div class="pms-card">
+              <div class="pms-card-head"><h3>📥 Today's Arrivals</h3><button class="pms-btn pms-btn-sm" onclick="pmsShow('pmsReservations')">View all</button></div>
+              <table class="pms-table">
+                <thead><tr><th>Guest</th><th>Room</th><th>Nights</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Rahul Sharma</strong></td><td>204</td><td>3</td><td><span class="ps ps-res">Expected</span></td></tr>
+                  <tr><td><strong>Priya Patel</strong></td><td>312</td><td>2</td><td><span class="ps ps-in">Checked In</span></td></tr>
+                  <tr><td><strong>Ahmed Khan</strong></td><td>101</td><td>1</td><td><span class="ps ps-res">Expected</span></td></tr>
+                  <tr><td><strong>Sarah Johnson</strong></td><td>405</td><td>4</td><td><span class="ps ps-in">Checked In</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pms-card">
+              <div class="pms-card-head"><h3>📤 Today's Departures</h3></div>
+              <table class="pms-table">
+                <thead><tr><th>Guest</th><th>Room</th><th>Balance</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>Meera Nair</strong></td><td>108</td><td>₹0</td><td><span class="ps ps-out">Departed</span></td></tr>
+                  <tr><td><strong>Vikram Singh</strong></td><td>211</td><td>₹4,200</td><td><span class="ps ps-pend">Pending</span></td></tr>
+                  <tr><td><strong>Farouk Ali</strong></td><td>302</td><td>₹0</td><td><span class="ps ps-out">Departed</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="pms-card">
+            <div class="pms-card-head"><h3>🏨 Room Snapshot</h3></div>
+            <div class="pms-card-body" style="display:flex;gap:12px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:140px;background:#dcfce7;border-radius:10px;padding:16px;text-align:center;"><div style="font-size:28px;font-weight:800;color:#16a34a;">23</div><div style="font-size:12px;font-weight:600;color:#166534;">Available</div></div>
+              <div style="flex:1;min-width:140px;background:#dbeafe;border-radius:10px;padding:16px;text-align:center;"><div style="font-size:28px;font-weight:800;color:#1d4ed8;">42</div><div style="font-size:12px;font-weight:600;color:#1e40af;">Occupied</div></div>
+              <div style="flex:1;min-width:140px;background:#fef3c7;border-radius:10px;padding:16px;text-align:center;"><div style="font-size:28px;font-weight:800;color:#d97706;">8</div><div style="font-size:12px;font-weight:600;color:#92400e;">Due Out</div></div>
+              <div style="flex:1;min-width:140px;background:#fee2e2;border-radius:10px;padding:16px;text-align:center;"><div style="font-size:28px;font-weight:800;color:#dc2626;">3</div><div style="font-size:12px;font-weight:600;color:#991b1b;">Out of Order</div></div>
+              <div style="flex:1;min-width:140px;background:#f3e8ff;border-radius:10px;padding:16px;text-align:center;"><div style="font-size:28px;font-weight:800;color:#7c3aed;">61.8%</div><div style="font-size:12px;font-weight:600;color:#6d28d9;">Occupancy</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RESERVATIONS -->
+        <div id="pmsReservations" class="pms-view">
+          <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Reservations</div>
+          <div style="font-size:13px;color:#888;margin-bottom:20px;">Manage all bookings</div>
+          <div class="pms-toolbar">
+            <div class="pms-search"><span>🔍</span><input type="text" placeholder="Search by name, room, ID…" oninput="pmsFilterRes(this.value)"></div>
+            <select class="pms-filter" onchange="pmsFilterResStatus(this.value)">
+              <option value="">All Statuses</option>
+              <option>Reserved</option><option>Checked In</option><option>Checked Out</option><option>Cancelled</option>
+            </select>
+            <div class="pms-spacer"></div>
+            <button class="pms-btn pms-btn-primary" onclick="pmsOpenModal('pmsNewResModal')">＋ New Reservation</button>
+          </div>
+          <div class="pms-card">
+            <table class="pms-table" id="pmsResTable">
+              <thead><tr><th>Res #</th><th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th><th>Nights</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="pmsResTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- FRONT DESK -->
+        <div id="pmsFrontDesk" class="pms-view">
+          <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Front Desk</div>
+          <div style="font-size:13px;color:#888;margin-bottom:20px;">Quick check-in / check-out</div>
+          <div class="pms-two">
+            <div class="pms-card">
+              <div class="pms-card-head"><h3>📥 Check-In</h3></div>
+              <div class="pms-card-body">
+                <div class="pms-form-group"><label>Reservation # or Guest Name</label><div style="display:flex;gap:8px;"><input type="text" id="fdSearch" placeholder="e.g. RES-003 or Rahul" style="flex:1;padding:8px 11px;font-size:13px;border:1.5px solid #dde3ee;border-radius:7px;font-family:var(--font);"><button class="pms-btn pms-btn-primary" onclick="fdLookup()">Look up</button></div></div>
+                <div id="fdResult" style="display:none;margin-top:12px;"></div>
+                <div id="fdCheckinForm" style="display:none;margin-top:12px;">
+                  <div class="pms-form-group"><label>ID Proof Type</label><select id="fdIdType" style="width:100%;padding:8px 11px;font-size:13px;border:1.5px solid #dde3ee;border-radius:7px;font-family:var(--font);"><option>Aadhaar Card</option><option>Passport</option><option>Driver's Licence</option><option>PAN Card</option></select></div>
+                  <div class="pms-form-group"><label>ID Number</label><input type="text" id="fdIdNum" placeholder="Enter ID number" style="width:100%;padding:8px 11px;font-size:13px;border:1.5px solid #dde3ee;border-radius:7px;font-family:var(--font);"></div>
+                  <button class="pms-btn pms-btn-success" style="width:100%;justify-content:center;" onclick="fdDoCheckin()">✅ Confirm Check-In</button>
+                </div>
+              </div>
+            </div>
+            <div class="pms-card">
+              <div class="pms-card-head"><h3>📤 Check-Out</h3></div>
+              <div class="pms-card-body">
+                <div class="pms-form-group"><label>Room Number or Guest Name</label><div style="display:flex;gap:8px;"><input type="text" id="coSearch" placeholder="e.g. 312 or Priya" style="flex:1;padding:8px 11px;font-size:13px;border:1.5px solid #dde3ee;border-radius:7px;font-family:var(--font);"><button class="pms-btn pms-btn-primary" onclick="coLookup()">Look up</button></div></div>
+                <div id="coResult" style="display:none;margin-top:12px;"></div>
+                <div id="coFolioForm" style="display:none;margin-top:12px;">
+                  <div id="coFolioSummary" style="background:#f0f4ff;border-radius:8px;padding:14px;margin-bottom:12px;font-size:13px;"></div>
+                  <button class="pms-btn pms-btn-success" style="width:100%;justify-content:center;" onclick="coDoCheckout()">💳 Settle & Check-Out</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pms-card">
+            <div class="pms-card-head"><h3>🛎 In-House Guests</h3></div>
+            <table class="pms-table">
+              <thead><tr><th>Room</th><th>Guest</th><th>Check-in</th><th>Due Out</th><th>Nights Left</th><th>Balance</th><th>Actions</th></tr></thead>
+              <tbody id="inHouseTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ROOMS -->
+        <div id="pmsRooms" class="pms-view">
+          <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Room Status</div>
+          <div style="font-size:13px;color:#888;margin-bottom:20px;">Live housekeeping board</div>
+          <div class="pms-toolbar">
+            <select class="pms-filter" onchange="filterRooms(this.value)"><option value="">All Floors</option><option>Floor 1</option><option>Floor 2</option><option>Floor 3</option><option>Floor 4</option></select>
+            <select class="pms-filter" onchange="filterRoomsType(this.value)"><option value="">All Types</option><option>Standard</option><option>Deluxe</option><option>Suite</option></select>
+            <div class="pms-spacer"></div>
+            <span style="font-size:12px;color:#888;">🟢 Available &nbsp;🟡 Occupied &nbsp;🔴 Maintenance &nbsp;🔵 Due Out</span>
+          </div>
+          <div class="pms-card">
+            <div class="pms-card-body" id="roomsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;"></div>
+          </div>
+        </div>
+
+        <!-- CALENDAR -->
+        <div id="pmsCalendar" class="pms-view">
+          <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Booking Calendar</div>
+          <div style="font-size:13px;color:#888;margin-bottom:20px;">7-day room availability overview</div>
+          <div class="pms-card">
+            <div class="pms-card-body" style="overflow-x:auto;" id="calendarWrap"></div>
+          </div>
+        </div>
+
+        <!-- GUESTS -->
+        <div id="pmsGuests" class="pms-view">
+          <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Guest Profiles</div>
+          <div style="font-size:13px;color:#888;margin-bottom:20px;">Guest database &amp; history</div>
+          <div class="pms-toolbar">
+            <div class="pms-search"><span>🔍</span><input type="text" placeholder="Search guests…" oninput="filterGuests(this.value)"></div>
+            <div class="pms-spacer"></div>
+            <button class="pms-btn pms-btn-primary" onclick="pmsOpenModal('pmsNewGuestModal')">＋ New Guest</button>
+          </div>
+          <div class="pms-card">
+            <table class="pms-table" id="guestTable">
+              <thead><tr><th>Guest ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Stays</th><th>Last Stay</th><th>VIP</th><th>Actions</th></tr></thead>
+              <tbody id="guestTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- BILLING -->
+        <div id="pmsBilling" class="pms-view">
+          <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Billing & Folios</div>
+          <div style="font-size:13px;color:#888;margin-bottom:20px;">Guest folios and payment management</div>
+          <div class="pms-toolbar">
+            <div class="pms-search"><span>🔍</span><input type="text" placeholder="Search folio…"></div>
+            <select class="pms-filter"><option>All</option><option>Pending</option><option>Paid</option><option>Partial</option></select>
+            <div class="pms-spacer"></div>
+            <button class="pms-btn" onclick="pmsPrint()">🖨 Print Folio</button>
+          </div>
+          <div class="pms-card">
+            <table class="pms-table">
+              <thead><tr><th>Folio #</th><th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th><th>Room Charges</th><th>Extras</th><th>Total</th><th>Paid</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="billingTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- REPORTS -->
+        <div id="pmsReports" class="pms-view">
+          <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Reports</div>
+          <div style="font-size:13px;color:#888;margin-bottom:20px;">Operational &amp; financial analytics</div>
+          <div class="pms-kpi-row">
+            <div class="pms-kpi kc-blue"><div class="pms-kpi-icon">📈</div><div class="pms-kpi-label">Occupancy (MTD)</div><div class="pms-kpi-val">63%</div><div class="pms-kpi-sub">↑ 4% vs last month</div></div>
+            <div class="pms-kpi kc-green"><div class="pms-kpi-icon">💰</div><div class="pms-kpi-label">Revenue (MTD)</div><div class="pms-kpi-val">₹18.4L</div><div class="pms-kpi-sub">↑ 8% vs last month</div></div>
+            <div class="pms-kpi kc-amber"><div class="pms-kpi-icon">🛏</div><div class="pms-kpi-label">ADR</div><div class="pms-kpi-val">₹4,280</div><div class="pms-kpi-sub">Avg daily rate</div></div>
+            <div class="pms-kpi kc-purple"><div class="pms-kpi-icon">✨</div><div class="pms-kpi-label">RevPAR</div><div class="pms-kpi-val">₹2,645</div><div class="pms-kpi-sub">Revenue per avail. room</div></div>
+          </div>
+          <div class="pms-two">
+            <div class="pms-card">
+              <div class="pms-card-head"><h3>📅 Daily Revenue (Last 7 days)</h3></div>
+              <div class="pms-card-body">
+                <div id="pmsBarChart" style="display:flex;align-items:flex-end;gap:8px;height:120px;padding:8px 0;"></div>
+                <div style="display:flex;gap:8px;margin-top:8px;font-size:11px;color:#888;" id="pmsBarLabels"></div>
+              </div>
+            </div>
+            <div class="pms-card">
+              <div class="pms-card-head"><h3>🍩 Revenue Breakdown</h3></div>
+              <div class="pms-card-body">
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                  <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;"><span>Room Revenue</span><strong>₹14.2L (77%)</strong></div><div style="height:8px;background:#f0f0f0;border-radius:4px;"><div style="height:8px;background:#2857ce;border-radius:4px;width:77%;"></div></div></div>
+                  <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;"><span>F&B</span><strong>₹2.8L (15%)</strong></div><div style="height:8px;background:#f0f0f0;border-radius:4px;"><div style="height:8px;background:#16a34a;border-radius:4px;width:15%;"></div></div></div>
+                  <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;"><span>Spa & Wellness</span><strong>₹1.1L (6%)</strong></div><div style="height:8px;background:#f0f0f0;border-radius:4px;"><div style="height:8px;background:#7c3aed;border-radius:4px;width:6%;"></div></div></div>
+                  <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;"><span>Others</span><strong>₹0.3L (2%)</strong></div><div style="height:8px;background:#f0f0f0;border-radius:4px;"><div style="height:8px;background:#d97706;border-radius:4px;width:2%;"></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pms-card">
+            <div class="pms-card-head"><h3>📋 Available Reports</h3></div>
+            <div class="pms-card-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
+              <button class="pms-btn" style="justify-content:flex-start;gap:10px;padding:12px 14px;" onclick="pmsToast('Generating Occupancy Report…','info')">📊 Occupancy Report</button>
+              <button class="pms-btn" style="justify-content:flex-start;gap:10px;padding:12px 14px;" onclick="pmsToast('Generating Revenue Report…','info')">💰 Revenue Report</button>
+              <button class="pms-btn" style="justify-content:flex-start;gap:10px;padding:12px 14px;" onclick="pmsToast('Generating Arrivals Report…','info')">📥 Arrivals Report</button>
+              <button class="pms-btn" style="justify-content:flex-start;gap:10px;padding:12px 14px;" onclick="pmsToast('Generating Departures Report…','info')">📤 Departures Report</button>
+              <button class="pms-btn" style="justify-content:flex-start;gap:10px;padding:12px 14px;" onclick="pmsToast('Generating Guest History…','info')">👤 Guest History</button>
+              <button class="pms-btn" style="justify-content:flex-start;gap:10px;padding:12px 14px;" onclick="pmsToast('Generating Housekeeping Report…','info')">🧹 Housekeeping</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div id="pmsSettings" class="pms-view">
+          <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Settings</div>
+          <div style="font-size:13px;color:#888;margin-bottom:20px;">Hotel configuration &amp; preferences</div>
+          <div class="pms-card">
+            <div class="pms-card-head"><h3>🏨 Property Details</h3></div>
+            <div class="pms-card-body">
+              <div class="pms-form-row">
+                <div class="pms-form-group"><label>Hotel Name</label><input type="text" value="Grand Horizon Hotel"></div>
+                <div class="pms-form-group"><label>Property Code</label><input type="text" value="GHH-001" readonly style="background:#f5f7fa;"></div>
+              </div>
+              <div class="pms-form-row">
+                <div class="pms-form-group"><label>City</label><input type="text" value="Mumbai"></div>
+                <div class="pms-form-group"><label>Country</label><input type="text" value="India"></div>
+              </div>
+              <div class="pms-form-group"><label>Default Check-in Time</label><input type="text" value="14:00"></div>
+              <div class="pms-form-group"><label>Default Check-out Time</label><input type="text" value="12:00"></div>
+              <button class="pms-btn pms-btn-primary" onclick="pmsToast('Settings saved','success')">Save Changes</button>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div><!-- /pms-body -->
+  </div><!-- /pmsApp -->
+
+</div><!-- /videoPage -->
+
+<!-- PMS MODALS -->
+<div id="pmsNewResModal" class="pms-modal">
+  <div class="pms-modal-box">
+    <div class="pms-modal-head"><h3>📋 New Reservation</h3><button class="pms-modal-close" onclick="pmsCloseModal('pmsNewResModal')">✕</button></div>
+    <div class="pms-modal-body">
+      <div class="pms-form-row">
+        <div class="pms-form-group"><label>Guest Name *</label><input type="text" id="nrName" placeholder="Full name"></div>
+        <div class="pms-form-group"><label>Phone *</label><input type="text" id="nrPhone" placeholder="+91 9xxxxxxxxx"></div>
+      </div>
+      <div class="pms-form-row">
+        <div class="pms-form-group"><label>Check-in Date *</label><input type="date" id="nrCI"></div>
+        <div class="pms-form-group"><label>Check-out Date *</label><input type="date" id="nrCO"></div>
+      </div>
+      <div class="pms-form-row">
+        <div class="pms-form-group"><label>Room Type</label><select id="nrRoomType"><option>Standard</option><option>Deluxe</option><option>Suite</option></select></div>
+        <div class="pms-form-group"><label>Adults</label><select id="nrAdults"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
+      </div>
+      <div class="pms-form-group"><label>Special Requests</label><textarea rows="2" placeholder="Any special requirements…" style="width:100%;padding:8px 11px;font-size:13px;border:1.5px solid #dde3ee;border-radius:7px;font-family:var(--font);"></textarea></div>
+    </div>
+    <div class="pms-modal-foot">
+      <button class="pms-btn" onclick="pmsCloseModal('pmsNewResModal')">Cancel</button>
+      <button class="pms-btn pms-btn-primary" onclick="pmsCreateReservation()">Create Reservation</button>
+    </div>
+  </div>
+</div>
+
+<div id="pmsNewGuestModal" class="pms-modal">
+  <div class="pms-modal-box">
+    <div class="pms-modal-head"><h3>👤 New Guest Profile</h3><button class="pms-modal-close" onclick="pmsCloseModal('pmsNewGuestModal')">✕</button></div>
+    <div class="pms-modal-body">
+      <div class="pms-form-row">
+        <div class="pms-form-group"><label>First Name *</label><input type="text" id="ngFirst"></div>
+        <div class="pms-form-group"><label>Last Name *</label><input type="text" id="ngLast"></div>
+      </div>
+      <div class="pms-form-row">
+        <div class="pms-form-group"><label>Phone</label><input type="text" id="ngPhone"></div>
+        <div class="pms-form-group"><label>Email</label><input type="email" id="ngEmail"></div>
+      </div>
+      <div class="pms-form-row">
+        <div class="pms-form-group"><label>Nationality</label><input type="text" id="ngNat" value="Indian"></div>
+        <div class="pms-form-group"><label>VIP Status</label><select id="ngVip"><option value="0">None</option><option value="1">Silver</option><option value="2">Gold</option><option value="3">Platinum</option></select></div>
+      </div>
+    </div>
+    <div class="pms-modal-foot">
+      <button class="pms-btn" onclick="pmsCloseModal('pmsNewGuestModal')">Cancel</button>
+      <button class="pms-btn pms-btn-primary" onclick="pmsCreateGuest()">Save Guest</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STEP 3 — ROLE SELECTION
+═══════════════════════════════════════════════════════════ -->
+<div id="loginPage">
+  <div class="login-logo">
+    <h1>Agent<span>Hero</span></h1>
+    <!-- <p>Medical Supply Chain Management &nbsp;·&nbsp; Select your role to continue</p> -->
+    <div><span class="user-email-badge" id="loggedEmailBadge">📧 —</span></div>
+  </div>
+
+  <div class="role-grid">
+    <div class="role-card gov" onclick="login('government')">
+      <div class="role-card-icon" style="background:#dbeafe;">🏛️</div>
+      <div>
+        <h3 style="color:#1e40af;">Government Admin</h3>
+        <p>Manage drug type registry, issue &amp; revoke licenses, register organisations, and view the full audit trail.</p>
+        <div class="tag-row">
+          <span class="tag" style="background:#dbeafe;color:#1e40af;">Drug Types</span>
+          <span class="tag" style="background:#dbeafe;color:#1e40af;">Licenses</span>
+          <span class="tag" style="background:#dbeafe;color:#1e40af;">Participants</span>
+          <span class="tag" style="background:#dbeafe;color:#1e40af;">Audit Trail</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="role-card mfr" onclick="login('manufacturer')">
+      <div class="role-card-icon" style="background:#EAF3DE;">🏭</div>
+      <div>
+        <h3 style="color:#3B6D11;">Manufacturer</h3>
+        <p>View your licensed drug types, create medicine units with auto-assigned UUIDs, and transfer batches to pharmacies.</p>
+        <div class="tag-row">
+          <span class="tag" style="background:#EAF3DE;color:#27500A;">My Licenses</span>
+          <span class="tag" style="background:#EAF3DE;color:#27500A;">Create Unit</span>
+          <span class="tag" style="background:#EAF3DE;color:#27500A;">Transfer</span>
+          <span class="tag" style="background:#EAF3DE;color:#27500A;">My Units</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="role-card ph" onclick="login('pharmacy')">
+      <div class="role-card-icon" style="background:#FAEEDA;">💊</div>
+      <div>
+        <h3 style="color:#854F0B;">Pharmacy</h3>
+        <p>Browse units in your inventory, look up any unit by UUID, and dispense medicine to citizens by patient ID.</p>
+        <div class="tag-row">
+          <span class="tag" style="background:#FAEEDA;color:#633806;">Received Units</span>
+          <span class="tag" style="background:#FAEEDA;color:#633806;">Transfer to Citizen</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="role-card pub" onclick="login('public')">
+      <div class="role-card-icon" style="background:#f0efea;">🔍</div>
+      <div>
+        <h3 style="color:#444;">Public Verification</h3>
+        <p>Verify the authenticity of any medicine unit using its unique UUID printed on the packaging — no login required.</p>
+        <div class="tag-row">
+          <span class="tag" style="background:#f0efea;color:#555;">UUID Lookup</span>
+          <span class="tag" style="background:#f0efea;color:#555;">Chain of Custody</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STEP 3 — APP SHELL
+═══════════════════════════════════════════════════════════ -->
+<div id="appShell">
+  <header class="topbar">
+    <div class="topbar-brand">Med<span>Track</span></div>
+    <nav class="topbar-nav" id="topbarNav"></nav>
+    <div class="topbar-right">
+      <div class="user-chip" id="userChip" title="Click to log out" onclick="logout()">
+        <div class="uc-avatar" id="ucAvatar"></div>
+        <div class="uc-info">
+          <div class="uc-name" id="ucName"></div>
+          <div class="uc-role" id="ucRole"></div>
+        </div>
+        <span class="uc-caret">▼</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <div class="content" id="contentArea">
+
+      <!-- ══════════════════ GOVERNMENT ══════════════════ -->
+
+      <div id="v-gov-home" class="view">
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Regulatory overview — Medical Supply Web</div>
+        <div class="kpi-row">
+          <div class="kpi k-blue"><div class="kpi-icon">💊</div><div class="kpi-label">Drug Types</div><div class="kpi-value">12</div><div class="kpi-sub">2 added this month</div></div>
+          <div class="kpi k-green"><div class="kpi-icon">📜</div><div class="kpi-label">Licenses</div><div class="kpi-value">8 <span style="font-size:14px;font-weight:500;">valid</span></div><div class="kpi-sub">1 revoked, 2 expiring</div></div>
+          <div class="kpi k-amber"><div class="kpi-icon">🔢</div><div class="kpi-label">Units (total)</div><div class="kpi-value">1,240</div><div class="kpi-sub">Across all owners</div></div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-head"><h2>🕒 Recent Actions</h2></div>
+            <div class="card-body">
+              <div class="tl">
+                <div class="tl-item"><div class="tl-dot-col"><div class="tl-dot" style="background:var(--green)"></div><div class="tl-line"></div></div><div class="tl-body"><div class="tl-title">License issued to PharmaCorp (Drug X)</div><div class="tl-time">02 Oct 2026</div></div></div>
+                <div class="tl-item"><div class="tl-dot-col"><div class="tl-dot" style="background:var(--blue)"></div><div class="tl-line"></div></div><div class="tl-body"><div class="tl-title">DrugType "Drug Y" created</div><div class="tl-time">01 Oct 2026</div></div></div>
+                <div class="tl-item"><div class="tl-dot-col"><div class="tl-dot" style="background:var(--red)"></div></div><div class="tl-body"><div class="tl-title">License L-004 revoked — HealthMed Co</div><div class="tl-time">28 Sep 2026</div></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>⚡ Quick Actions</h2></div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+              <button class="btn btn-primary" style="justify-content:center;" onclick="goView('gov','drug-types')">＋ Register Drug Type</button>
+              <button class="btn btn-success" style="justify-content:center;" onclick="openModal('issueLicenseModal')">＋ Issue License</button>
+              <button class="btn" style="justify-content:center;" onclick="goView('gov','units')">🔢 View All Units</button>
+              <button class="btn" style="justify-content:center;" onclick="goView('gov','participants')">👤 Register Organisation</button>
+              <button class="btn" style="justify-content:center;" onclick="goView('gov','audit')">📋 View Audit Trail</button>
+            </div>
+          </div>
+        </div>
+        <div class="alert a-warning"><span class="alert-icon">⚠️</span><div><strong>Attention:</strong> License LIC-2025-089 (Metformin 500mg) expires in 18 days. <a href="#" onclick="goView('gov','licenses');return false;" style="font-weight:700;color:var(--amber);">View Licenses →</a></div></div>
+      </div>
+
+      <div id="v-gov-drug-types" class="view">
+        <div class="page-title">Drug Types</div>
+        <div class="page-sub">Approved drug type registry — create and maintain drug classifications</div>
+        <div class="toolbar">
+          <div class="search-box"><span>🔍</span><input type="text" placeholder="Search drug types…"></div>
+          <select class="filter-select"><option>All Categories</option><option>Analgesic</option><option>Antibiotic</option><option>Antidiabetic</option><option>Cardiovascular</option></select>
+          <div class="toolbar-spacer"></div>
+          <button class="btn btn-primary" onclick="openModal('createDrugTypeModal')">＋ Register Drug Type</button>
+        </div>
+        <div class="card">
+          <table class="table">
+            <thead><tr><th>Code</th><th>Name</th><th>Category</th><th>Description</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr><td><code>DT-001</code></td><td><strong>Paracetamol 500mg</strong></td><td><span class="pill p-active">Analgesic</span></td><td>Pain relief and fever reduction</td><td>15 Jan 2026</td><td class="actions"><button class="btn btn-sm" onclick="openModal('createDrugTypeModal')">✏️ Edit</button><button class="btn btn-sm btn-primary" onclick="toast('Viewing DT-001','info')">👁 View</button></td></tr>
+              <tr><td><code>DT-002</code></td><td><strong>Amoxicillin 250mg</strong></td><td><span class="pill p-info">Antibiotic</span></td><td>Antibiotic for bacterial infections</td><td>20 Jan 2026</td><td class="actions"><button class="btn btn-sm" onclick="openModal('createDrugTypeModal')">✏️ Edit</button><button class="btn btn-sm btn-primary" onclick="toast('Viewing DT-002','info')">👁 View</button></td></tr>
+              <tr><td><code>DT-003</code></td><td><strong>Insulin Glargine 100 IU/ml</strong></td><td><span class="pill p-active">Antidiabetic</span></td><td>Long-acting insulin for diabetes management</td><td>01 Feb 2026</td><td class="actions"><button class="btn btn-sm" onclick="openModal('createDrugTypeModal')">✏️ Edit</button><button class="btn btn-sm btn-primary" onclick="toast('Viewing DT-003','info')">👁 View</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="v-gov-licenses" class="view">
+        <div class="page-title">Licenses</div>
+        <div class="page-sub">Issue, prolong, and revoke manufacturing licenses</div>
+        <div class="toolbar">
+          <div class="search-box"><span>🔍</span><input type="text" placeholder="Search by license ID or manufacturer…"></div>
+          <select class="filter-select"><option>All Statuses</option><option>Valid</option><option>Expiring Soon</option><option>Revoked</option></select>
+          <div class="toolbar-spacer"></div>
+          <button class="btn btn-primary" onclick="openModal('issueLicenseModal')">＋ Issue License</button>
+        </div>
+        <div class="card">
+          <table class="table">
+            <thead><tr><th>License ID</th><th>Manufacturer</th><th>Drug Type</th><th>Issue Date</th><th>Expires</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr><td><code>LIC-2026-001</code></td><td>PharmaCorp Ltd</td><td>Paracetamol 500mg</td><td>20 Jan 2026</td><td>20 Jan 2027</td><td><span class="pill p-valid">✓ Valid</span></td><td class="actions"><button class="btn btn-sm btn-success" onclick="toast('License prolonged to Jan 2028','success')">⟳ Prolong</button><button class="btn btn-sm btn-danger" onclick="toast('License LIC-2026-001 revoked','warning')">✕ Revoke</button></td></tr>
+              <tr><td><code>LIC-2026-002</code></td><td>MediSource Inc</td><td>Amoxicillin 250mg</td><td>01 Feb 2026</td><td>01 Feb 2027</td><td><span class="pill p-valid">✓ Valid</span></td><td class="actions"><button class="btn btn-sm btn-success" onclick="toast('License prolonged to Feb 2028','success')">⟳ Prolong</button><button class="btn btn-sm btn-danger" onclick="toast('License LIC-2026-002 revoked','warning')">✕ Revoke</button></td></tr>
+              <tr><td><code>LIC-2025-089</code></td><td>PharmaCorp Ltd</td><td>Metformin 500mg</td><td>10 Sep 2025</td><td>10 Sep 2026</td><td><span class="pill p-expiring">⚠ Expiring</span></td><td class="actions"><button class="btn btn-sm btn-success" onclick="toast('License prolonged','success')">⟳ Prolong</button><button class="btn btn-sm btn-danger" onclick="toast('License revoked','warning')">✕ Revoke</button></td></tr>
+              <tr><td><code>LIC-2025-045</code></td><td>HealthMed Co</td><td>Insulin Glargine</td><td>15 Jun 2025</td><td>15 Jun 2026</td><td><span class="pill p-revoked">✕ Revoked</span></td><td class="actions"><button class="btn btn-sm" disabled>⟳ Prolong</button><button class="btn btn-sm" onclick="toast('Viewing history for LIC-2025-045','info')">📋 History</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="v-gov-units" class="view">
+        <div class="page-title">Medicine Units</div>
+        <div class="page-sub">All registered medicine units across the supply chain — read-only oversight</div>
+        <div class="toolbar">
+          <div class="search-box"><span>🔍</span><input type="text" placeholder="Search by UUID or drug type…"></div>
+          <select class="filter-select"><option>All Statuses</option><option>Active</option><option>Dispensed</option><option>Expired</option><option>Recalled</option></select>
+          <select class="filter-select"><option>All Manufacturers</option><option>PharmaCorp Ltd</option><option>MediSource Inc</option></select>
+          <div class="toolbar-spacer"></div>
+          <button class="btn" onclick="toast('Exporting units CSV…','info')">⬇ Export</button>
+        </div>
+        <div class="card">
+          <table class="table">
+            <thead><tr><th>Unit UUID</th><th>Drug Type</th><th>Manufacturer</th><th>License</th><th>Current Owner</th><th>Expiration</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr><td><code>550e8400…</code></td><td>Drug A — Paracetamol 500mg</td><td>PharmaCorp Ltd</td><td><code>LIC-2026-001</code></td><td>City Health Pharmacy</td><td>01 Aug 2026</td><td><span class="pill p-active">Active</span></td><td><button class="btn btn-sm btn-primary" onclick="openModal('transferHistoryModal')">📋 History</button></td></tr>
+              <tr><td><code>a7f34b2c…</code></td><td>Drug A — Paracetamol 500mg</td><td>PharmaCorp Ltd</td><td><code>LIC-2026-001</code></td><td>City Health Pharmacy</td><td>30 Jun 2027</td><td><span class="pill p-active">Active</span></td><td><button class="btn btn-sm btn-primary" onclick="openModal('transferHistoryModal')">📋 History</button></td></tr>
+              <tr><td><code>b2d87e4f…</code></td><td>Drug B — Amoxicillin 250mg</td><td>MediSource Inc</td><td><code>LIC-2026-002</code></td><td>John Doe (Citizen)</td><td>15 Dec 2026</td><td><span class="pill p-dispensed">Dispensed</span></td><td><button class="btn btn-sm btn-primary" onclick="openModal('transferHistoryModal')">📋 History</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="v-gov-participants" class="view">
+        <div class="page-title">Participants</div>
+        <div class="page-sub">Registered manufacturers and pharmacies in the supply chain</div>
+        <div class="toolbar">
+          <div class="search-box"><span>🔍</span><input type="text" placeholder="Search participants…"></div>
+          <select class="filter-select"><option>All Types</option><option>Manufacturer</option><option>Pharmacy</option></select>
+          <div class="toolbar-spacer"></div>
+          <button class="btn btn-primary" onclick="openModal('registerParticipantModal')">＋ Register Org</button>
+        </div>
+        <div class="card">
+          <table class="table">
+            <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>License No.</th><th>Registered</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr><td><code>MFR-001</code></td><td><strong>PharmaCorp Ltd</strong></td><td><span class="pill p-info">🏭 Manufacturer</span></td><td>MFG-2025-1234</td><td>15 Mar 2025</td><td><span class="pill p-active">Active</span></td><td class="actions"><button class="btn btn-sm" onclick="toast('Editing MFR-001','info')">✏️ Edit</button><button class="btn btn-sm btn-primary" onclick="toast('Viewing MFR-001','info')">👁 View</button></td></tr>
+              <tr><td><code>MFR-002</code></td><td><strong>MediSource Inc</strong></td><td><span class="pill p-info">🏭 Manufacturer</span></td><td>MFG-2025-5610</td><td>20 May 2025</td><td><span class="pill p-active">Active</span></td><td class="actions"><button class="btn btn-sm" onclick="toast('Editing MFR-002','info')">✏️ Edit</button><button class="btn btn-sm btn-primary" onclick="toast('Viewing MFR-002','info')">👁 View</button></td></tr>
+              <tr><td><code>PH-012</code></td><td><strong>City Health Pharmacy</strong></td><td><span class="pill p-pending">💊 Pharmacy</span></td><td>PHM-2024-5678</td><td>20 Nov 2024</td><td><span class="pill p-active">Active</span></td><td class="actions"><button class="btn btn-sm" onclick="toast('Editing PH-012','info')">✏️ Edit</button><button class="btn btn-sm btn-primary" onclick="toast('Viewing PH-012','info')">👁 View</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="v-gov-audit" class="view">
+        <div class="page-title">Audit Trail</div>
+        <div class="page-sub">Immutable log of all system events — read-only</div>
+        <div class="toolbar">
+          <div class="search-box"><span>🔍</span><input type="text" placeholder="Search audit log…"></div>
+          <select class="filter-select"><option>All Events</option><option>License Events</option><option>Unit Created</option><option>Transfer</option><option>Dispense</option></select>
+          <input type="date" class="filter-select" value="2026-10-01">
+          <input type="date" class="filter-select" value="2026-10-31">
+          <div class="toolbar-spacer"></div>
+          <button class="btn" onclick="exportAuditCSV()">⬇ Export CSV</button>
+        </div>
+        <div class="card">
+          <table class="table">
+            <thead><tr><th>Timestamp</th><th>Event</th><th>Actor</th><th>Entity</th><th>Details</th></tr></thead>
+            <tbody>
+              <tr><td>02 Oct 2026 09:12</td><td><span class="pill p-active">License Issued</span></td><td>Gov. Admin</td><td><code>LIC-2026-001</code></td><td>PharmaCorp Ltd → Paracetamol 500mg</td></tr>
+              <tr><td>01 Oct 2026 14:30</td><td><span class="pill p-info">Drug Type Created</span></td><td>Gov. Admin</td><td><code>DT-003</code></td><td>Insulin Glargine 100 IU/ml registered</td></tr>
+              <tr><td>28 Sep 2026 11:05</td><td><span class="pill p-revoked">License Revoked</span></td><td>Gov. Admin</td><td><code>LIC-2025-045</code></td><td>HealthMed Co — compliance failure</td></tr>
+              <tr><td>25 Sep 2026 08:44</td><td><span class="pill p-info">Unit Transferred</span></td><td>PharmaCorp Ltd</td><td><code>a7f3-4b2c</code></td><td>→ City Health Pharmacy</td></tr>
+              <tr><td>22 Sep 2026 15:20</td><td><span class="pill p-active">Unit Created</span></td><td>PharmaCorp Ltd</td><td><code>a7f3-4b2c</code></td><td>Paracetamol 500mg · Batch 2026-042</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══════════════════ MANUFACTURER ══════════════════ -->
+
+      <div id="v-mfr-home" class="view">
+        <div class="page-title">Manufacturer Dashboard</div>
+        <div class="page-sub">PharmaCorp Ltd — Production &amp; transfer management</div>
+        <div class="kpi-row">
+          <div class="kpi k-blue"><div class="kpi-icon">📜</div><div class="kpi-label">Active Licenses</div><div class="kpi-value">3</div><div class="kpi-sub">1 expiring soon</div></div>
+          <div class="kpi k-green"><div class="kpi-icon">🔢</div><div class="kpi-label">Units Created</div><div class="kpi-value">1,247</div><div class="kpi-sub">↑ 142 this month</div></div>
+          <div class="kpi k-amber"><div class="kpi-icon">📦</div><div class="kpi-label">Transferred</div><div class="kpi-value">892</div><div class="kpi-sub">To 8 pharmacies</div></div>
+          <div class="kpi k-red"><div class="kpi-icon">🏪</div><div class="kpi-label">In Inventory</div><div class="kpi-value">355</div><div class="kpi-sub">Ready to ship</div></div>
+        </div>
+        <div class="alert a-info"><span class="alert-icon">ℹ️</span><div>2 units are ready for transfer. <a href="#" onclick="goView('mfr','transfer');return false;" style="font-weight:700;color:var(--blue);">Go to Transfer →</a></div></div>
+        <div class="card">
+          <div class="card-head"><h2>📜 My Licenses</h2><button class="btn btn-sm" onclick="goView('mfr','my-licenses')">View all →</button></div>
+          <table class="table">
+            <thead><tr><th>Drug Type</th><th>Status</th><th>Expires</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td>Drug A — Paracetamol 500mg</td><td><span class="pill p-valid">Valid</span></td><td>31 Dec 2026</td><td>—</td></tr>
+              <tr><td>Drug B — Insulin Glargine</td><td><span class="pill p-valid">Valid</span></td><td>30 Jun 2026</td><td><span style="font-size:11px;color:var(--tx2);">Contact regulator to renew</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="v-mfr-my-licenses" class="view">
+        <div class="page-title">My Licenses</div>
+        <div class="page-sub">Manufacturing licenses issued to PharmaCorp Ltd</div>
+        <div class="card">
+          <table class="table">
+            <thead><tr><th>License ID</th><th>Drug Type</th><th>Issue Date</th><th>Expires</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td><code>LIC-2026-001</code></td><td>Drug A — Paracetamol 500mg</td><td>20 Jan 2026</td><td>31 Dec 2026</td><td><span class="pill p-valid">Valid</span></td><td>—</td></tr>
+              <tr><td><code>LIC-2026-015</code></td><td>Drug B — Insulin Glargine 100 IU/ml</td><td>01 Mar 2026</td><td>30 Jun 2026</td><td><span class="pill p-valid">Valid</span></td><td><span style="font-size:11px;color:var(--tx2);">Contact regulator to renew</span></td></tr>
+              <tr><td><code>LIC-2025-089</code></td><td>Drug C — Metformin 500mg</td><td>10 Sep 2025</td><td>10 Sep 2026</td><td><span class="pill p-expiring">⚠ Expiring</span></td><td><span style="font-size:11px;color:var(--tx2);">Contact regulator to renew</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="v-mfr-create-unit" class="view">
+        <div class="page-title">Create Medicine Unit</div>
+        <div class="page-sub">Produce new units against a valid manufacturing license</div>
+        <div style="max-width:580px;">
+          <div class="card">
+            <div class="card-head"><h2>🧪 Unit Details</h2></div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">Drug Type <span class="form-req">*</span></label>
+                <select class="form-select" id="mfrDrugType">
+                  <option value="">Select drug type…</option>
+                  <option value="DT-001" data-license="LIC-2026-001">Drug A — Paracetamol 500mg (LIC-2026-001 · Valid)</option>
+                  <option value="DT-002" data-license="LIC-2026-015">Drug B — Insulin Glargine 100 IU/ml (LIC-2026-015 · Valid)</option>
+                  <option value="DT-003" disabled>Drug C — Metformin 500mg (No valid license)</option>
+                </select>
+                <div class="form-hint">Only drug types with a valid, non-revoked license are selectable.</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Expiration Date <span class="form-req">*</span></label>
+                <input type="date" class="form-input" id="mfrExpiry">
+              </div>
+              <div class="alert a-warning" style="margin-bottom:16px;"><span class="alert-icon">📋</span><div>A unique RFC 4122 UUID will be auto-generated per unit. All creation events are logged to the immutable audit trail.</div></div>
+              <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="createUnit()">🧪 Create Medicine Unit</button>
+              <div id="createdUUIDBox" style="display:none;margin-top:16px;">
+                <div class="alert a-success"><span class="alert-icon">✅</span>
+                  <div><strong>Unit created successfully.</strong><br>UUID: <code id="createdUUID" style="font-size:12px;word-break:break-all;"></code><br><span style="font-size:11px;color:var(--tx-success);">Share this UUID with the receiving pharmacy.</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="v-mfr-transfer" class="view">
+        <div class="page-title">Transfer to Pharmacy</div>
+        <div class="page-sub">Look up a unit by UUID and dispatch it to a licensed pharmacy</div>
+        <div style="max-width:580px;">
+          <div class="card">
+            <div class="card-head"><h2>📤 Transfer Unit</h2></div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">Unit UUID <span class="form-req">*</span></label>
+                <div style="display:flex;gap:8px;">
+                  <input type="text" class="form-input" id="transferUUID" placeholder="e.g. c9e12f5a-6b8d-4000-a7k5-m1n2o3p4q5r6" style="flex:1;">
+                  <button class="btn btn-primary" onclick="lookupUnit()">Look up</button>
+                </div>
+                <div class="form-hint">Enter the UUID of the unit you want to transfer.</div>
+              </div>
+              <div id="transferUnitInfo" style="display:none;margin-bottom:14px;"><div class="alert a-success"><span class="alert-icon">✅</span><div id="transferUnitText"></div></div></div>
+              <div class="form-group">
+                <label class="form-label">To Pharmacy <span class="form-req">*</span></label>
+                <select class="form-select" id="transferTargetPharmacy">
+                  <option value="">Select pharmacy…</option>
+                  <option>City Health Pharmacy</option>
+                  <option>MediCare Pharmacy</option>
+                  <option>WellnessRx Pharmacy</option>
+                </select>
+              </div>
+              <div class="form-group"><label class="form-label">Transfer Notes</label><textarea class="form-textarea" rows="2" placeholder="Optional notes…"></textarea></div>
+              <button class="btn btn-success" style="width:100%;justify-content:center;" onclick="submitTransfer()">📤 Transfer Unit</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="v-mfr-my-units" class="view">
+        <div class="page-title">My Units</div>
+        <div class="page-sub">All medicine units created by PharmaCorp Ltd</div>
+        <div class="toolbar">
+          <div class="search-box"><span>🔍</span><input type="text" placeholder="Search UUID or drug…"></div>
+          <select class="filter-select"><option>All Statuses</option><option>In Stock</option><option>Transferred</option></select>
+          <div class="toolbar-spacer"></div>
+          <button class="btn btn-primary" onclick="goView('mfr','create-unit')">＋ Create New Unit</button>
+        </div>
+        <div class="card">
+          <table class="table">
+            <thead><tr><th>Unit UUID (short)</th><th>Drug Type</th><th>Created</th><th>Expiration</th><th>Current Owner</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr><td><code>a7f34b2c…</code></td><td>Drug A — Paracetamol 500mg</td><td>15 Apr 2026</td><td>30 Jun 2027</td><td>City Health Pharmacy</td><td><span class="pill p-transferred">Transferred</span></td><td><button class="btn btn-sm btn-primary" onclick="openModal('transferHistoryModal')">📋 History</button></td></tr>
+              <tr><td><code>c9e12f5a…</code></td><td>Drug B — Insulin Glargine</td><td>20 Apr 2026</td><td>20 Mar 2027</td><td>PharmaCorp Ltd</td><td><span class="pill p-stock">In Stock</span></td><td><button class="btn btn-sm btn-primary" onclick="goView('mfr','transfer')">📤 Transfer</button></td></tr>
+              <tr><td><code>d4f28a1b…</code></td><td>Drug A — Paracetamol 500mg</td><td>22 Apr 2026</td><td>15 Jul 2027</td><td>PharmaCorp Ltd</td><td><span class="pill p-stock">In Stock</span></td><td><button class="btn btn-sm btn-primary" onclick="goView('mfr','transfer')">📤 Transfer</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══════════════════ PHARMACY ══════════════════ -->
+
+      <div id="v-ph-home" class="view">
+        <div class="page-title">Pharmacy Dashboard</div>
+        <div class="page-sub">City Health Pharmacy — Inventory &amp; dispensing</div>
+        <div class="kpi-row">
+          <div class="kpi k-blue"><div class="kpi-icon">📥</div><div class="kpi-label">Units Received</div><div class="kpi-value">428</div><div class="kpi-sub">From 5 manufacturers</div></div>
+          <div class="kpi k-green"><div class="kpi-icon">✅</div><div class="kpi-label">Dispensed to Citizens</div><div class="kpi-value">392</div><div class="kpi-sub">All documented</div></div>
+          <div class="kpi k-amber"><div class="kpi-icon">📦</div><div class="kpi-label">Current Inventory</div><div class="kpi-value">36</div><div class="kpi-sub">3 drug types</div></div>
+          <div class="kpi k-red"><div class="kpi-icon">⚠️</div><div class="kpi-label">Expiring ≤ 30 days</div><div class="kpi-value">2</div><div class="kpi-sub">Review needed</div></div>
+        </div>
+        <div class="alert a-info"><span class="alert-icon">ℹ️</span><div>You have 36 units available. <a href="#" onclick="goView('ph','received-units');return false;" style="font-weight:700;color:var(--blue);">View inventory →</a></div></div>
+      </div>
+
+      <div id="v-ph-received-units" class="view">
+        <div class="page-title">Received Units</div>
+        <div class="page-sub">Units currently owned by City Health Pharmacy</div>
+        <div class="toolbar">
+          <div class="search-box"><span>🔍</span><input type="text" placeholder="Search UUID or drug type…"></div>
+          <select class="filter-select"><option>All</option><option>Available</option><option>Dispensed</option></select>
+          <div class="toolbar-spacer"></div>
+          <button class="btn" onclick="toast('Exporting inventory CSV…','info')">⬇ Export</button>
+        </div>
+        <div class="card">
+          <table class="table">
+            <thead><tr><th>Unit UUID (short)</th><th>Drug Type</th><th>Expiration</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td><code>550e8400…</code></td><td>Drug A — Paracetamol 500mg</td><td>01 Aug 2026</td><td><span class="pill p-active">active</span></td><td class="actions"><button class="btn btn-sm btn-primary" onclick="openModal('transferHistoryModal')">📋 History</button><button class="btn btn-sm btn-success" onclick="goView('ph','transfer-citizen')">Transfer</button></td></tr>
+              <tr><td><code>a7f34b2c…</code></td><td>Drug A — Paracetamol 500mg</td><td>30 Jun 2027</td><td><span class="pill p-active">active</span></td><td class="actions"><button class="btn btn-sm btn-primary" onclick="openModal('transferHistoryModal')">📋 History</button><button class="btn btn-sm btn-success" onclick="goView('ph','transfer-citizen')">Transfer</button></td></tr>
+              <tr><td><code>e5h38a1b…</code></td><td>Drug B — Amoxicillin 250mg</td><td>30 Nov 2026</td><td><span class="pill p-active">active</span></td><td class="actions"><button class="btn btn-sm btn-primary" onclick="openModal('transferHistoryModal')">📋 History</button><button class="btn btn-sm btn-success" onclick="goView('ph','transfer-citizen')">Transfer</button></td></tr>
+              <tr><td><code>f8j64c2d…</code></td><td>Drug C — Insulin Glargine</td><td>28 Feb 2027</td><td><span class="pill p-active">active</span></td><td class="actions"><button class="btn btn-sm btn-primary" onclick="openModal('transferHistoryModal')">📋 History</button><button class="btn btn-sm btn-success" onclick="goView('ph','transfer-citizen')">Transfer</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="v-ph-transfer-citizen" class="view">
+        <div class="page-title">Transfer to Citizen</div>
+        <div class="page-sub">Look up a unit and dispense it to a patient by citizen ID</div>
+        <div style="max-width:580px;">
+          <div class="card">
+            <div class="card-head"><h2>💊 Dispense Form</h2></div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">Unit UUID <span class="form-req">*</span></label>
+                <div style="display:flex;gap:8px;">
+                  <input type="text" class="form-input" id="phUUID" placeholder="e.g. 550e8400-e29b-41d4-a716…" style="flex:1;">
+                  <button class="btn btn-primary" onclick="phLookupUnit()">Look up</button>
+                </div>
+              </div>
+              <div id="phUnitInfo" style="display:none;margin-bottom:14px;"><div class="alert a-success"><span class="alert-icon">✅</span><div id="phUnitInfoText"></div></div></div>
+              <div class="form-group"><label class="form-label">Citizen ID <span class="form-req">*</span></label><input type="text" class="form-input" id="phCitizenId" placeholder="National ID / Patient ID"></div>
+              <div class="form-group"><label class="form-label">Patient Name</label><input type="text" class="form-input" id="phPatientName" placeholder="Full name"></div>
+              <div class="alert a-info" style="margin-bottom:16px;"><span class="alert-icon">ℹ️</span><div>Patient receives the UUID for self-verification. This transfer is permanently recorded.</div></div>
+              <button class="btn btn-success" id="phDispenseBtn" data-uuid="" style="width:100%;justify-content:center;" onclick="dispenseToCtizen()">✅ Dispense to Citizen</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════ PUBLIC VERIFY ══════════════════ -->
+
+      <div id="v-pub-verify" class="view">
+        <div class="verify-hero">
+          <h2>🔍 Verify a Medicine Unit</h2>
+          <p>Enter the unique code (UUID) printed on your medicine packaging to confirm its authenticity and view the complete chain of custody.</p>
+          <div class="verify-input-row">
+            <input type="text" id="verificationUUID" placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000" onkeydown="if(event.key==='Enter')verifyMed()">
+            <button class="btn btn-primary" style="padding:11px 22px;font-size:14px;" onclick="verifyMed()">Verify</button>
+          </div>
+          <div class="verify-hint">Try: <strong>550e8400-e29b-41d4-a716-446655440000</strong> (active) &nbsp;·&nbsp; <strong>b2d87e4f-1c3a-4000-9abc-123456789012</strong> (dispensed)</div>
+        </div>
+        <div id="verificationResult" class="verify-result" style="display:none;"></div>
+        <div style="max-width:640px;margin:0 auto;">
+          <div class="card">
+            <div class="card-head"><h2>📖 How to verify</h2></div>
+            <div class="card-body">
+              <ol style="margin-left:18px;line-height:2.1;font-size:13px;color:var(--tx1);">
+                <li>Locate the UUID on your medicine packaging or pharmacy receipt</li>
+                <li>Enter the full UUID in the search box above</li>
+                <li>Click <strong>Verify</strong> to see authenticity information</li>
+                <li>Confirm the manufacturer and current owner match expectations</li>
+                <li>If verification fails, contact your pharmacy or regulatory authority immediately</li>
+              </ol>
+              <div class="divider"></div>
+              <div class="alert a-warning" style="margin:0;"><span class="alert-icon">⚠️</span><div><strong>Warning:</strong> If this UUID is not found or shows unexpected ownership, the medicine may be counterfeit. Contact authorities immediately.</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /app-body -->
+</div><!-- /appShell -->
+
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODALS
+═══════════════════════════════════════════════════════════ -->
+
+<div id="createDrugTypeModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-head"><h3>💊 Register Drug Type</h3><button class="modal-close" onclick="closeModal('createDrugTypeModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Drug Code <span class="form-req">*</span></label><input type="text" class="form-input" placeholder="e.g. DT-004"></div>
+        <div class="form-group"><label class="form-label">Category</label><select class="form-select"><option>Analgesic</option><option>Antibiotic</option><option>Antidiabetic</option><option>Cardiovascular</option><option>Other</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Drug Name <span class="form-req">*</span></label><input type="text" class="form-input" placeholder="e.g. Metformin 850mg"></div>
+      <div class="form-group"><label class="form-label">Description <span class="form-req">*</span></label><textarea class="form-textarea" rows="3" placeholder="Primary use, dosage information, contraindications…"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('createDrugTypeModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="closeModal('createDrugTypeModal');toast('Drug type registered successfully','success')">Register Drug Type</button>
+    </div>
+  </div>
+</div>
+
+<div id="issueLicenseModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-head"><h3>📜 Issue Manufacturing License</h3><button class="modal-close" onclick="closeModal('issueLicenseModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Manufacturer <span class="form-req">*</span></label><select class="form-select"><option value="">Select manufacturer…</option><option>PharmaCorp Ltd</option><option>MediSource Inc</option><option>HealthMed Co</option></select></div>
+      <div class="form-group"><label class="form-label">Drug Type <span class="form-req">*</span></label><select class="form-select"><option value="">Select drug type…</option><option>Drug A — Paracetamol 500mg</option><option>Drug B — Amoxicillin 250mg</option><option>Drug C — Insulin Glargine 100 IU/ml</option><option>Drug D — Metformin 850mg</option></select></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Issue Date <span class="form-req">*</span></label><input type="date" class="form-input" value="2026-05-13"></div>
+        <div class="form-group"><label class="form-label">Expiry Date <span class="form-req">*</span></label><input type="date" class="form-input"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('issueLicenseModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="closeModal('issueLicenseModal');toast('License issued. Manufacturer has been notified.','success')">Issue License</button>
+    </div>
+  </div>
+</div>
+
+<div id="registerParticipantModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-head"><h3>👤 Register Organisation</h3><button class="modal-close" onclick="closeModal('registerParticipantModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Participant Type <span class="form-req">*</span></label><select class="form-select"><option value="">Select type…</option><option>Manufacturer</option><option>Pharmacy</option></select></div>
+        <div class="form-group"><label class="form-label">License Number <span class="form-req">*</span></label><input type="text" class="form-input" placeholder="Govt-issued #"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Organisation Name <span class="form-req">*</span></label><input type="text" class="form-input" placeholder="Enter legal name"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Contact Email <span class="form-req">*</span></label><input type="email" class="form-input" placeholder="contact@org.com"></div>
+        <div class="form-group"><label class="form-label">Phone</label><input type="text" class="form-input" placeholder="+1 555 000 0000"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Address</label><textarea class="form-textarea" rows="2" placeholder="Physical address"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('registerParticipantModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="closeModal('registerParticipantModal');toast('Organisation registered successfully','success')">Register</button>
+    </div>
+  </div>
+</div>
+
+<div id="transferHistoryModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-head"><h3>📋 Transfer History</h3><button class="modal-close" onclick="closeModal('transferHistoryModal')">✕</button></div>
+    <div class="modal-body">
+      <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:0.5px solid var(--bd);">
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:4px;">UNIT UUID</div>
+        <code>a7f34b2c-9d1e-4f6a-b832-1c2d3e4f5a6b</code>&nbsp;<span class="pill p-active">Active</span>
+        <div style="margin-top:6px;font-size:12px;color:var(--tx1);">Paracetamol 500mg &nbsp;·&nbsp; Exp. 30 Jun 2027</div>
+      </div>
+      <div class="chain">
+        <div class="chain-item"><div class="chain-num">1</div><div class="chain-detail"><div class="chain-route">System → PharmaCorp Ltd <span class="pill p-active" style="margin-left:6px;">Created</span></div><div class="chain-date">15 Jan 2026 · 09:30</div></div></div>
+        <div class="chain-item"><div class="chain-num">2</div><div class="chain-detail"><div class="chain-route">PharmaCorp Ltd → City Health Pharmacy <span class="pill p-info" style="margin-left:6px;">Transferred</span></div><div class="chain-date">20 Feb 2026 · 14:22</div></div></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal('transferHistoryModal')">Close</button></div>
+  </div>
+</div>
+
+<div id="toastArea"></div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────
+   EMAILJS CONFIGURATION
+   ─────────────────────────────────────────────────────────────
+   To receive login notifications, fill in your EmailJS credentials:
+   1. Sign up at https://www.emailjs.com (free tier: 200 emails/month)
+   2. Create a Service (Gmail, Outlook, etc.) → copy the Service ID
+   3. Create an Email Template with variables: {{user_email}}, {{login_time}}, {{user_agent}}
+      → copy the Template ID
+   4. Go to Account → API Keys → copy your Public Key
+   5. Paste them below.
+───────────────────────────────────────────────────────────── */
+const EMAILJS_CONFIG = {
+  publicKey:  'M8b0p7EpidBflveNo',      // e.g. 'user_abc123XYZ'
+  serviceId:  'medtrackk',      // e.g. 'service_gmail'
+  templateId: 'template_zjrr7wp',     // e.g. 'template_Agent Hero'
+  notifyEmail:'arif.shah22@gmail.com'// Your email to receive notifications
+};
+
+/* ─────────────────────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────────────────────── */
+let currentUserEmail = '';
+let currentRole = null;
+
+/* ─────────────────────────────────────────────────────────────
+   EMAIL GATE
+───────────────────────────────────────────────────────────── */
+(function initEmailJS() {
+  if (EMAILJS_CONFIG.publicKey && EMAILJS_CONFIG.publicKey !== 'YOUR_PUBLIC_KEY') {
+    emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey });
+  }
+})();
+
+function handleEmailSubmit() {
+  const emailInput = document.getElementById('userEmail');
+  const email = emailInput.value.trim();
+  const errorEl = document.getElementById('emailError');
+  const hintEl  = document.getElementById('emailHint');
+
+  // Basic validation
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  if (!valid) {
+    emailInput.classList.add('error');
+    errorEl.style.display = 'block';
+    hintEl.style.display  = 'none';
+    emailInput.focus();
+    return;
+  }
+
+  emailInput.classList.remove('error');
+  errorEl.style.display = 'none';
+  currentUserEmail = email;
+
+  // Show loading state
+  const btn    = document.getElementById('gateSubmitBtn');
+  const btnTxt = document.getElementById('gateBtnText');
+  const spinner= document.getElementById('gateSpinner');
+  btn.disabled   = true;
+  btnTxt.textContent = 'Sending…';
+  spinner.style.display = 'block';
+
+  // Send email notification, then proceed regardless of outcome
+  sendLoginNotification(email).finally(() => {
+    btn.disabled = false;
+    btnTxt.textContent = 'Login to Watch Demo →';
+    spinner.style.display = 'none';
+    showLoginPage();
+  });
+}
+
+async function sendLoginNotification(email) {
+  // Skip if EmailJS not configured
+  if (!EMAILJS_CONFIG.publicKey || EMAILJS_CONFIG.publicKey === 'YOUR_PUBLIC_KEY') {
+    console.info('[Agent Hero] EmailJS not configured — skipping notification. See EMAILJS_CONFIG in script.');
+    return;
+  }
+
+  const now = new Date();
+  const timeStr = now.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    dateStyle: 'medium', timeStyle: 'short'
+  });
+
+  try {
+    await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+      user_email:  email,
+      login_time:  timeStr,
+      time:        timeStr,
+      message:     'New login on Agent Hero prototype from: ' + email,
+      user_agent:  navigator.userAgent.substring(0, 120),
+      to_email:    EMAILJS_CONFIG.notifyEmail
+    });
+    console.info('[Agent Hero] Login notification sent for:', email);
+  } catch (err) {
+    console.warn('[Agent Hero] EmailJS send failed:', err);
+    // Silently fail — user still gets through
+  }
+}
+
+function showLoginPage() {
+  // Hide gate → show video page (not role selector directly)
+  document.getElementById('emailGate').style.display = 'none';
+  showVideoPage();
+}
+
+function showVideoPage() {
+  const vp = document.getElementById('videoPage');
+  vp.style.display = 'flex';
+  vp.style.flexDirection = 'column';
+  // Show PMS login screen
+  document.getElementById('pmsLogin').style.display = 'flex';
+  document.getElementById('pmsApp').style.display = 'none';
+}
+
+function showRoleSelector() {
+  document.getElementById('videoPage').style.display = 'none';
+  const loginPage = document.getElementById('loginPage');
+  loginPage.style.display = 'flex';
+  document.getElementById('loggedEmailBadge').textContent = '📧 ' + currentUserEmail;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   CLARITY PMS — FULL APPLICATION LOGIC
+═════════════════════════════════════════════════════════════ */
+
+/* ── Data ── */
+const PMS_RESERVATIONS = [
+  { id:'RES-001', guest:'Rahul Sharma',   phone:'9810012345', room:'204', type:'Deluxe',   ci:'2026-06-09', co:'2026-06-12', nights:3, amount:12600, paid:12600, status:'Reserved',    balance:0    },
+  { id:'RES-002', guest:'Priya Patel',    phone:'9820023456', room:'312', type:'Standard',  ci:'2026-06-09', co:'2026-06-11', nights:2, amount:7200,  paid:7200,  status:'Checked In',  balance:0    },
+  { id:'RES-003', guest:'Ahmed Khan',     phone:'9830034567', room:'101', type:'Standard',  ci:'2026-06-09', co:'2026-06-10', nights:1, amount:3200,  paid:0,     status:'Reserved',    balance:3200 },
+  { id:'RES-004', guest:'Sarah Johnson',  phone:'9840045678', room:'405', type:'Suite',     ci:'2026-06-09', co:'2026-06-13', nights:4, amount:32000, paid:32000, status:'Checked In',  balance:0    },
+  { id:'RES-005', guest:'Vikram Singh',   phone:'9850056789', room:'211', type:'Deluxe',   ci:'2026-06-06', co:'2026-06-09', nights:3, amount:12600, paid:8400,  status:'Checked In',  balance:4200 },
+  { id:'RES-006', guest:'Meera Nair',     phone:'9860067890', room:'108', type:'Standard',  ci:'2026-06-07', co:'2026-06-09', nights:2, amount:6400,  paid:6400,  status:'Checked Out', balance:0    },
+  { id:'RES-007', guest:'Farouk Ali',     phone:'9870078901', room:'302', type:'Deluxe',   ci:'2026-06-08', co:'2026-06-09', nights:1, amount:4200,  paid:4200,  status:'Checked Out', balance:0    },
+  { id:'RES-008', guest:'Ayesha Menon',   phone:'9880089012', room:'314', type:'Standard',  ci:'2026-06-11', co:'2026-06-14', nights:3, amount:9600,  paid:4800,  status:'Reserved',    balance:4800 },
+  { id:'RES-009', guest:'David Lee',      phone:'9890090123', room:'502', type:'Suite',     ci:'2026-06-12', co:'2026-06-15', nights:3, amount:24000, paid:24000, status:'Reserved',    balance:0    },
+  { id:'RES-010', guest:'Neha Gupta',     phone:'9900001234', room:'207', type:'Standard',  ci:'2026-06-05', co:'2026-06-07', nights:2, amount:6400,  paid:6400,  status:'Cancelled',   balance:0    },
+];
+
+const PMS_ROOMS = [
+  { num:'101', type:'Standard', floor:1, rate:3200, status:'Occupied',  guest:'Ahmed Khan'    },
+  { num:'102', type:'Standard', floor:1, rate:3200, status:'Available', guest:''              },
+  { num:'103', type:'Standard', floor:1, rate:3200, status:'Available', guest:''              },
+  { num:'104', type:'Standard', floor:1, rate:3200, status:'Maintenance',guest:''             },
+  { num:'105', type:'Deluxe',   floor:1, rate:4200, status:'Available', guest:''              },
+  { num:'108', type:'Standard', floor:1, rate:3200, status:'Dirty',     guest:''              },
+  { num:'201', type:'Standard', floor:2, rate:3200, status:'Available', guest:''              },
+  { num:'204', type:'Deluxe',   floor:2, rate:4200, status:'Reserved',  guest:'Rahul Sharma'  },
+  { num:'207', type:'Standard', floor:2, rate:3200, status:'Available', guest:''              },
+  { num:'211', type:'Deluxe',   floor:2, rate:4200, status:'Due Out',   guest:'Vikram Singh'  },
+  { num:'215', type:'Deluxe',   floor:2, rate:4200, status:'Occupied',  guest:'In House'      },
+  { num:'302', type:'Deluxe',   floor:3, rate:4200, status:'Dirty',     guest:''              },
+  { num:'312', type:'Standard', floor:3, rate:3600, status:'Occupied',  guest:'Priya Patel'   },
+  { num:'314', type:'Standard', floor:3, rate:3200, status:'Available', guest:''              },
+  { num:'320', type:'Deluxe',   floor:3, rate:4200, status:'Available', guest:''              },
+  { num:'401', type:'Deluxe',   floor:4, rate:4500, status:'Occupied',  guest:'In House'      },
+  { num:'405', type:'Suite',    floor:4, rate:8000, status:'Occupied',  guest:'Sarah Johnson' },
+  { num:'410', type:'Suite',    floor:4, rate:8000, status:'Available', guest:''              },
+  { num:'415', type:'Deluxe',   floor:4, rate:4500, status:'Maintenance',guest:''             },
+  { num:'502', type:'Suite',    floor:5, rate:8000, status:'Reserved',  guest:'David Lee'     },
+  { num:'510', type:'Suite',    floor:5, rate:8000, status:'Available', guest:''              },
+];
+
+const PMS_GUESTS = [
+  { id:'G-001', name:'Rahul Sharma',  phone:'9810012345', email:'rahul@example.com',  stays:4, last:'2026-06-09', vip:1 },
+  { id:'G-002', name:'Priya Patel',   phone:'9820023456', email:'priya@example.com',  stays:2, last:'2026-06-09', vip:0 },
+  { id:'G-003', name:'Ahmed Khan',    phone:'9830034567', email:'ahmed@example.com',  stays:1, last:'2026-06-09', vip:0 },
+  { id:'G-004', name:'Sarah Johnson', phone:'9840045678', email:'sarah@example.com',  stays:7, last:'2026-06-09', vip:3 },
+  { id:'G-005', name:'Vikram Singh',  phone:'9850056789', email:'vikram@example.com', stays:3, last:'2026-06-09', vip:1 },
+  { id:'G-006', name:'Meera Nair',    phone:'9860067890', email:'meera@example.com',  stays:5, last:'2026-06-09', vip:2 },
+  { id:'G-007', name:'David Lee',     phone:'9890090123', email:'david@example.com',  stays:2, last:'2026-04-20', vip:0 },
+  { id:'G-008', name:'Ayesha Menon',  phone:'9880089012', email:'ayesha@example.com', stays:1, last:'2026-03-14', vip:0 },
+];
+
+const VIP_LABELS = ['—', '🥈 Silver', '🥇 Gold', '💎 Platinum'];
+
+/* ── Login ── */
+function pmsDoLogin() {
+  const u = document.getElementById('pmsUser').value.trim();
+  const p = document.getElementById('pmsPwd').value.trim();
+  const err = document.getElementById('pmsLoginErr');
+  if (u === 'admin' && p === 'admin123') {
+    err.style.display = 'none';
+    document.getElementById('pmsLogin').style.display = 'none';
+    const app = document.getElementById('pmsApp');
+    app.style.display = 'flex';
+    app.style.flexDirection = 'column';
+    pmsRenderAll();
+    pmsShow('pmsDash');
+  } else {
+    err.style.display = 'block';
+  }
+}
+
+function pmsLogout() {
+  document.getElementById('pmsApp').style.display = 'none';
+  document.getElementById('pmsLogin').style.display = 'flex';
+}
+
+/* ── Navigation ── */
+function pmsShow(viewId) {
+  document.querySelectorAll('.pms-view').forEach(v => v.classList.remove('active'));
+  const el = document.getElementById(viewId);
+  if (el) el.classList.add('active');
+
+  document.querySelectorAll('.pms-nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === viewId);
+  });
+  document.querySelectorAll('.pms-sidebar-item').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === viewId);
+  });
+}
+
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-view]');
+  if (btn && (btn.classList.contains('pms-nav-btn') || btn.classList.contains('pms-sidebar-item'))) {
+    pmsShow(btn.dataset.view);
+  }
+});
+
+/* ── Render all data ── */
+function pmsRenderAll() {
+  renderReservations(PMS_RESERVATIONS);
+  renderInHouse();
+  renderRooms(PMS_ROOMS);
+  renderCalendar();
+  renderGuests(PMS_GUESTS);
+  renderBilling();
+  renderBarChart();
+}
+
+/* ── Reservations ── */
+function renderReservations(data) {
+  const statusClass = { 'Reserved':'ps-res','Checked In':'ps-in','Checked Out':'ps-out','Cancelled':'ps-cancel' };
+  document.getElementById('pmsResTbody').innerHTML = data.map(r => `
+    <tr>
+      <td><code style="font-size:11px;">${r.id}</code></td>
+      <td><strong>${r.guest}</strong></td>
+      <td>${r.room}</td>
+      <td>${r.ci}</td>
+      <td>${r.co}</td>
+      <td>${r.nights}</td>
+      <td>₹${r.amount.toLocaleString()}</td>
+      <td><span class="ps ${statusClass[r.status]||'ps-res'}">${r.status}</span></td>
+      <td style="display:flex;gap:5px;">
+        ${r.status==='Reserved' ? `<button class="pms-btn pms-btn-sm pms-btn-success" onclick="quickCheckin('${r.id}')">Check In</button>` : ''}
+        ${r.status==='Checked In' ? `<button class="pms-btn pms-btn-sm" onclick="pmsToast('Folio opened for ${r.guest}','info')">Folio</button>` : ''}
+        ${r.status==='Reserved' ? `<button class="pms-btn pms-btn-sm pms-btn-danger" onclick="cancelRes('${r.id}')">Cancel</button>` : ''}
+      </td>
+    </tr>`).join('');
+}
+
+function pmsFilterRes(q) {
+  q = q.toLowerCase();
+  renderReservations(PMS_RESERVATIONS.filter(r =>
+    r.guest.toLowerCase().includes(q) || r.id.toLowerCase().includes(q) || r.room.includes(q)
+  ));
+}
+
+function pmsFilterResStatus(s) {
+  renderReservations(s ? PMS_RESERVATIONS.filter(r => r.status === s) : PMS_RESERVATIONS);
+}
+
+function quickCheckin(id) {
+  const res = PMS_RESERVATIONS.find(r => r.id === id);
+  if (res) { res.status = 'Checked In'; renderReservations(PMS_RESERVATIONS); renderInHouse(); pmsToast(`${res.guest} checked in to room ${res.room}`, 'success'); }
+}
+
+function cancelRes(id) {
+  const res = PMS_RESERVATIONS.find(r => r.id === id);
+  if (res) { res.status = 'Cancelled'; renderReservations(PMS_RESERVATIONS); pmsToast(`Reservation ${id} cancelled`, 'warning'); }
+}
+
+function pmsCreateReservation() {
+  const name = document.getElementById('nrName').value.trim();
+  const phone= document.getElementById('nrPhone').value.trim();
+  const ci   = document.getElementById('nrCI').value;
+  const co   = document.getElementById('nrCO').value;
+  if (!name || !ci || !co) { pmsToast('Please fill all required fields', 'danger'); return; }
+  const nights = Math.round((new Date(co)-new Date(ci))/(864e5));
+  if (nights <= 0) { pmsToast('Check-out must be after check-in', 'danger'); return; }
+  const rate = document.getElementById('nrRoomType').value === 'Suite' ? 8000 : document.getElementById('nrRoomType').value === 'Deluxe' ? 4200 : 3200;
+  const newRes = {
+    id: 'RES-' + String(PMS_RESERVATIONS.length+1).padStart(3,'0'),
+    guest: name, phone, room: '—', type: document.getElementById('nrRoomType').value,
+    ci, co, nights, amount: nights * rate, paid: 0, status: 'Reserved', balance: nights * rate
+  };
+  PMS_RESERVATIONS.unshift(newRes);
+  renderReservations(PMS_RESERVATIONS);
+  pmsCloseModal('pmsNewResModal');
+  pmsToast(`Reservation ${newRes.id} created for ${name}`, 'success');
+}
+
+/* ── In-House ── */
+function renderInHouse() {
+  const inhouse = PMS_RESERVATIONS.filter(r => r.status === 'Checked In');
+  document.getElementById('inHouseTbody').innerHTML = inhouse.map(r => `
+    <tr>
+      <td><strong>${r.room}</strong></td>
+      <td>${r.guest}</td>
+      <td>${r.ci}</td>
+      <td>${r.co}</td>
+      <td>${r.nights}</td>
+      <td>${r.balance > 0 ? `<span style="color:#dc2626;font-weight:700;">₹${r.balance.toLocaleString()}</span>` : '<span style="color:#16a34a;">₹0</span>'}</td>
+      <td style="display:flex;gap:5px;">
+        <button class="pms-btn pms-btn-sm" onclick="pmsToast('Folio for ${r.guest}','info')">Folio</button>
+        <button class="pms-btn pms-btn-sm pms-btn-danger" onclick="pmsToast('Initiating checkout for ${r.guest}','info')">Check Out</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:#aaa;padding:24px;">No in-house guests</td></tr>';
+}
+
+/* ── Front Desk ── */
+function fdLookup() {
+  const q = document.getElementById('fdSearch').value.trim().toLowerCase();
+  const res = PMS_RESERVATIONS.find(r =>
+    (r.id.toLowerCase() === q || r.guest.toLowerCase().includes(q)) && r.status === 'Reserved'
+  );
+  const div = document.getElementById('fdResult');
+  const form = document.getElementById('fdCheckinForm');
+  if (res) {
+    div.style.display = 'block';
+    div.innerHTML = `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;font-size:13px;">
+      <strong>${res.guest}</strong> &nbsp;·&nbsp; Room <strong>${res.room}</strong> &nbsp;·&nbsp; ${res.nights} night(s) &nbsp;·&nbsp; ₹${res.amount.toLocaleString()}
+      <span class="ps ps-res" style="margin-left:8px;">${res.status}</span>
+    </div>`;
+    form.style.display = 'block';
+    form.dataset.resId = res.id;
+  } else {
+    div.style.display = 'block';
+    div.innerHTML = `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px;font-size:13px;color:#dc2626;">No pending reservation found for "<strong>${q}</strong>"</div>`;
+    form.style.display = 'none';
+  }
+}
+
+function fdDoCheckin() {
+  const id = document.getElementById('fdCheckinForm').dataset.resId;
+  quickCheckin(id);
+  document.getElementById('fdResult').style.display = 'none';
+  document.getElementById('fdCheckinForm').style.display = 'none';
+  document.getElementById('fdSearch').value = '';
+}
+
+function coLookup() {
+  const q = document.getElementById('coSearch').value.trim().toLowerCase();
+  const res = PMS_RESERVATIONS.find(r =>
+    (r.room === q || r.guest.toLowerCase().includes(q)) && r.status === 'Checked In'
+  );
+  const div = document.getElementById('coResult');
+  const form = document.getElementById('coFolioForm');
+  if (res) {
+    div.style.display = 'block';
+    div.innerHTML = `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;font-size:13px;">
+      <strong>${res.guest}</strong> &nbsp;·&nbsp; Room <strong>${res.room}</strong> &nbsp;·&nbsp; ${res.nights} nights
+    </div>`;
+    form.style.display = 'block';
+    form.dataset.resId = res.id;
+    document.getElementById('coFolioSummary').innerHTML = `
+      <div style="font-weight:700;margin-bottom:8px;">📄 Folio Summary</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Room charges (${res.nights} nights)</span><span>₹${res.amount.toLocaleString()}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Already paid</span><span style="color:#16a34a;">−₹${res.paid.toLocaleString()}</span></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid #c7d7f0;padding-top:6px;margin-top:4px;font-weight:700;font-size:14px;"><span>Balance Due</span><span style="color:${res.balance>0?'#dc2626':'#16a34a'};">₹${res.balance.toLocaleString()}</span></div>`;
+  } else {
+    div.style.display = 'block';
+    div.innerHTML = `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px;font-size:13px;color:#dc2626;">No checked-in guest found for "<strong>${q}</strong>"</div>`;
+    form.style.display = 'none';
+  }
+}
+
+function coDoCheckout() {
+  const id = document.getElementById('coFolioForm').dataset.resId;
+  const res = PMS_RESERVATIONS.find(r => r.id === id);
+  if (res) {
+    res.status = 'Checked Out'; res.balance = 0; res.paid = res.amount;
+    renderReservations(PMS_RESERVATIONS); renderInHouse(); renderBilling();
+    pmsToast(`${res.guest} checked out. Folio settled.`, 'success');
+  }
+  document.getElementById('coResult').style.display = 'none';
+  document.getElementById('coFolioForm').style.display = 'none';
+  document.getElementById('coSearch').value = '';
+}
+
+/* ── Rooms ── */
+const ROOM_STATUS_COLORS = {
+  'Available': '#dcfce7', 'Occupied': '#dbeafe', 'Due Out': '#fef9c3',
+  'Reserved': '#e9d5ff', 'Maintenance': '#fee2e2', 'Dirty': '#f3f4f6'
+};
+const ROOM_STATUS_BADGE = {
+  'Available': '🟢', 'Occupied': '🔵', 'Due Out': '🟡',
+  'Reserved': '🟣', 'Maintenance': '🔴', 'Dirty': '⚪'
+};
+
+function renderRooms(data) {
+  document.getElementById('roomsGrid').innerHTML = data.map(r => `
+    <div style="background:${ROOM_STATUS_COLORS[r.status]||'#f5f5f5'};border-radius:10px;padding:12px;border:1px solid rgba(0,0,0,.06);cursor:pointer;"
+         onclick="pmsToast('Room ${r.num} · ${r.type} · ₹${r.rate}/night · ${r.status}${r.guest?' · '+r.guest:''}','info')">
+      <div style="font-size:18px;font-weight:800;color:#1a1a1a;">${r.num}</div>
+      <div style="font-size:10px;font-weight:600;color:#555;margin-bottom:4px;">${r.type}</div>
+      <div style="font-size:11px;">${ROOM_STATUS_BADGE[r.status]} ${r.status}</div>
+      ${r.guest ? `<div style="font-size:10px;color:#666;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.guest}</div>` : ''}
+    </div>`).join('');
+}
+
+function filterRooms(floor) {
+  const num = floor.replace('Floor ','');
+  renderRooms(floor ? PMS_ROOMS.filter(r => String(r.floor) === num) : PMS_ROOMS);
+}
+
+function filterRoomsType(type) {
+  renderRooms(type ? PMS_ROOMS.filter(r => r.type === type) : PMS_ROOMS);
+}
+
+/* ── Calendar ── */
+function renderCalendar() {
+  const days = [];
+  const today = new Date('2026-06-09');
+  for (let i=0; i<7; i++) {
+    const d = new Date(today); d.setDate(d.getDate()+i);
+    days.push(d.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short'}));
+  }
+  const rooms = ['101','204','211','302','312','405','502'];
+  const bookings = {
+    '101':['Occupied','Occupied','Occupied','Available','Available','Available','Available'],
+    '204':['Reserved','Checked In','Checked In','Checked In','Available','Available','Available'],
+    '211':['Due Out','Available','Available','Available','Available','Available','Available'],
+    '302':['Dirty','Available','Available','Available','Available','Available','Available'],
+    '312':['Checked In','Checked In','Available','Available','Reserved','Reserved','Reserved'],
+    '405':['Checked In','Checked In','Checked In','Checked In','Available','Available','Available'],
+    '502':['Available','Available','Available','Reserved','Reserved','Reserved','Available'],
+  };
+  const cellClass = {
+    'Checked In':'rg-checkin','Reserved':'rg-booked','Due Out':'rg-checkout',
+    'Occupied':'rg-booked','Dirty':'rg-maint','Available':'','Maintenance':'rg-maint'
+  };
+  let html = `<div class="room-grid">
+    <div class="rg-header">Room</div>
+    ${days.map(d=>`<div class="rg-header">${d}</div>`).join('')}`;
+  rooms.forEach(rn => {
+    const rm = PMS_ROOMS.find(r=>r.num===rn);
+    html += `<div class="rg-room"><span>${rm?ROOM_STATUS_BADGE[rm.status]:'🟢'}</span>${rn}</div>`;
+    (bookings[rn]||[]).forEach(s => {
+      html += `<div class="rg-cell ${cellClass[s]||''}"><span class="rg-label">${s==='Available'?'':s}</span></div>`;
+    });
+  });
+  html += '</div>';
+  document.getElementById('calendarWrap').innerHTML = html;
+}
+
+/* ── Guests ── */
+function renderGuests(data) {
+  document.getElementById('guestTbody').innerHTML = data.map(g => `
+    <tr>
+      <td><code style="font-size:11px;">${g.id}</code></td>
+      <td><strong>${g.name}</strong></td>
+      <td>${g.phone}</td>
+      <td>${g.email}</td>
+      <td>${g.stays}</td>
+      <td>${g.last}</td>
+      <td>${VIP_LABELS[g.vip]||'—'}</td>
+      <td><button class="pms-btn pms-btn-sm" onclick="pmsToast('Profile: ${g.name}','info')">👁 View</button></td>
+    </tr>`).join('');
+}
+
+function filterGuests(q) {
+  q = q.toLowerCase();
+  renderGuests(PMS_GUESTS.filter(g=>g.name.toLowerCase().includes(q)||g.email.toLowerCase().includes(q)||g.phone.includes(q)));
+}
+
+function pmsCreateGuest() {
+  const first = document.getElementById('ngFirst').value.trim();
+  const last  = document.getElementById('ngLast').value.trim();
+  if (!first || !last) { pmsToast('First and last name required','danger'); return; }
+  PMS_GUESTS.unshift({
+    id:'G-' + String(PMS_GUESTS.length+1).padStart(3,'0'),
+    name: first+' '+last, phone: document.getElementById('ngPhone').value,
+    email: document.getElementById('ngEmail').value,
+    stays:0, last:'—', vip: +document.getElementById('ngVip').value
+  });
+  renderGuests(PMS_GUESTS);
+  pmsCloseModal('pmsNewGuestModal');
+  pmsToast(`Guest ${first} ${last} added`, 'success');
+}
+
+/* ── Billing ── */
+function renderBilling() {
+  const statusMap = {'Checked In':'ps-pend','Checked Out':'ps-paid','Reserved':'ps-part','Cancelled':'ps-cancel'};
+  const statusLabel = {'Checked In':'Pending','Checked Out':'Paid','Reserved':'Partial','Cancelled':'Void'};
+  document.getElementById('billingTbody').innerHTML = PMS_RESERVATIONS.filter(r=>r.status!=='Cancelled').map((r,i) => `
+    <tr>
+      <td><code style="font-size:11px;">F-${String(i+1).padStart(3,'0')}</code></td>
+      <td>${r.guest}</td>
+      <td>${r.room}</td>
+      <td>${r.ci}</td>
+      <td>${r.co}</td>
+      <td>₹${r.amount.toLocaleString()}</td>
+      <td>₹0</td>
+      <td><strong>₹${r.amount.toLocaleString()}</strong></td>
+      <td>₹${r.paid.toLocaleString()}</td>
+      <td><span class="ps ${statusMap[r.status]||'ps-pend'}">${statusLabel[r.status]||'Pending'}</span></td>
+      <td><button class="pms-btn pms-btn-sm" onclick="pmsToast('Folio printed for ${r.guest}','info')">🖨</button></td>
+    </tr>`).join('');
+}
+
+/* ── Bar Chart ── */
+function renderBarChart() {
+  const vals = [92000, 110000, 87000, 143000, 128000, 155000, 140000];
+  const labels = ['3 Jun','4 Jun','5 Jun','6 Jun','7 Jun','8 Jun','9 Jun'];
+  const max = Math.max(...vals);
+  const bar = document.getElementById('pmsBarChart');
+  const lbl = document.getElementById('pmsBarLabels');
+  if (!bar) return;
+  bar.innerHTML = vals.map((v,i) => `
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <div style="font-size:10px;color:#888;font-weight:600;">₹${(v/1000).toFixed(0)}k</div>
+      <div style="width:100%;background:#2857ce;border-radius:4px 4px 0 0;height:${Math.round((v/max)*90)}px;transition:height .3s;"></div>
+    </div>`).join('');
+  lbl.innerHTML = labels.map(l=>`<div style="flex:1;text-align:center;">${l}</div>`).join('');
+}
+
+/* ── Modal helpers ── */
+function pmsOpenModal(id)  { document.getElementById(id).classList.add('open'); }
+function pmsCloseModal(id) { document.getElementById(id).classList.remove('open'); }
+window.addEventListener('click', e => {
+  if (e.target.classList.contains('pms-modal')) e.target.classList.remove('open');
+});
+
+function pmsPrint() { pmsToast('Folio sent to printer','info'); }
+
+/* ── PMS Toast ── */
+function pmsToast(msg, type='success') { toast(msg, type); }
+
+// Allow pressing Enter in the email input
+document.getElementById('userEmail').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') handleEmailSubmit();
+});
+// Clear error on typing
+document.getElementById('userEmail').addEventListener('input', function() {
+  this.classList.remove('error');
+  document.getElementById('emailError').style.display = 'none';
+  document.getElementById('emailHint').style.display = 'block';
+});
+
+/* ─────────────────────────────────────────────────────────────
+   DATA
+───────────────────────────────────────────────────────────── */
+const MEDICINE_DB = {
+  '550e8400-e29b-41d4-a716-446655440000': {
+    drugType:'Drug A — Paracetamol 500mg', manufacturer:'PharmaCorp Ltd',
+    owner:'City Health Pharmacy (Pharmacy)', status:'Active', expiry:'2026-08-01',
+    licenseId:'LIC-2026-001',
+    transfers:[
+      { from:'System', to:'PharmaCorp Ltd', action:'Created', date:'2026-01-15' },
+      { from:'PharmaCorp Ltd', to:'City Health Pharmacy', action:'Transferred', date:'2026-02-20' }
+    ]
+  },
+  'a7f34b2c-9d1e-4f6a-b832-1c2d3e4f5a6b': {
+    drugType:'Drug A — Paracetamol 500mg', manufacturer:'PharmaCorp Ltd',
+    owner:'City Health Pharmacy', status:'Active', expiry:'2027-06-30',
+    licenseId:'LIC-2026-001',
+    transfers:[
+      { from:'System', to:'PharmaCorp Ltd', action:'Created', date:'2026-04-15' },
+      { from:'PharmaCorp Ltd', to:'City Health Pharmacy', action:'Transferred', date:'2026-04-18' }
+    ]
+  },
+  'b2d87e4f-1c3a-4000-9abc-123456789012': {
+    drugType:'Drug B — Amoxicillin 250mg', manufacturer:'MediSource Inc',
+    owner:'John Doe (Citizen)', status:'Dispensed', expiry:'2026-12-15',
+    licenseId:'LIC-2026-002',
+    transfers:[
+      { from:'System', to:'MediSource Inc', action:'Created', date:'2026-04-10' },
+      { from:'MediSource Inc', to:'City Health Pharmacy', action:'Transferred', date:'2026-04-12' },
+      { from:'City Health Pharmacy', to:'John Doe (Citizen)', action:'Dispensed', date:'2026-04-22' }
+    ]
+  }
+};
+
+const MFR_UNITS = {
+  'c9e12f5a-6b8d-4000-a7k5-m1n2o3p4q5r6': { drugType:'Drug B — Insulin Glargine 100 IU/ml', status:'In Stock' },
+  'd4f28a1b-3c7e-4000-9k5m-a1b2c3d4e5f6': { drugType:'Drug A — Paracetamol 500mg', status:'In Stock' }
+};
+
+const PH_UNITS = {
+  '550e8400': { drugType:'Drug A — Paracetamol 500mg', status:'active', expiry:'2026-08-01' },
+  'a7f34b2c': { drugType:'Drug A — Paracetamol 500mg', status:'active', expiry:'2027-06-30' }
+};
+
+/* ─────────────────────────────────────────────────────────────
+   ROLE CONFIG
+───────────────────────────────────────────────────────────── */
+const ROLES = {
+  government: {
+    label:'Government Admin', org:'Regulatory Authority',
+    icon:'🏛️', initials:'GA',
+    avatarStyle:'background:#dbeafe;color:#1e40af;',
+    roleStyle:'color:#1e40af;',
+    nav:[
+      { id:'home',         label:'Home',          icon:'🏠', view:'gov-home' },
+      { id:'drug-types',   label:'Drug Types',    icon:'💊', view:'gov-drug-types' },
+      { id:'licenses',     label:'Licenses',      icon:'📜', view:'gov-licenses' },
+      { id:'units',        label:'Medicine Units', icon:'🔢', view:'gov-units' },
+      { id:'participants', label:'Participants',   icon:'👥', view:'gov-participants' },
+      { id:'audit',        label:'Audit',          icon:'📋', view:'gov-audit' }
+    ]
+  },
+  manufacturer: {
+    label:'Manufacturer', org:'PharmaCorp Ltd',
+    icon:'🏭', initials:'PC',
+    avatarStyle:'background:#EAF3DE;color:#3B6D11;',
+    roleStyle:'color:#3B6D11;',
+    nav:[
+      { id:'home',        label:'Home',         icon:'🏠', view:'mfr-home' },
+      { id:'my-licenses', label:'My Licenses',  icon:'📜', view:'mfr-my-licenses' },
+      { id:'create-unit', label:'Create Unit',  icon:'🧪', view:'mfr-create-unit' },
+      { id:'transfer',    label:'Transfer',      icon:'📤', view:'mfr-transfer' },
+      { id:'my-units',    label:'My Units',      icon:'🔢', view:'mfr-my-units' }
+    ]
+  },
+  pharmacy: {
+    label:'Pharmacy', org:'City Health Pharmacy',
+    icon:'💊', initials:'CH',
+    avatarStyle:'background:#FAEEDA;color:#854F0B;',
+    roleStyle:'color:#854F0B;',
+    nav:[
+      { id:'home',             label:'Home',                icon:'🏠', view:'ph-home' },
+      { id:'received-units',   label:'Received Units',      icon:'📦', view:'ph-received-units' },
+      { id:'transfer-citizen', label:'Transfer to Citizen',  icon:'💊', view:'ph-transfer-citizen' }
+    ]
+  },
+  public: {
+    label:'Public', org:'Citizen',
+    icon:'🔍', initials:'PU',
+    avatarStyle:'background:#f0efea;color:#555;',
+    roleStyle:'color:#555;',
+    nav:[
+      { id:'verify', label:'Verify Medicine', icon:'🔍', view:'pub-verify' }
+    ]
+  }
+};
+
+/* ─────────────────────────────────────────────────────────────
+   LOGIN / LOGOUT
+───────────────────────────────────────────────────────────── */
+function login(role) {
+  currentRole = role;
+  const cfg = ROLES[role];
+
+  document.getElementById('loginPage').style.display = 'none';
+  const shell = document.getElementById('appShell');
+  shell.style.display = 'flex';
+
+  // Build topbar nav
+  const nav = document.getElementById('topbarNav');
+  nav.innerHTML = '';
+  cfg.nav.forEach(item => {
+    const btn = document.createElement('button');
+    btn.className = 'tnav-item';
+    btn.id = 'tn-' + item.view;
+    btn.innerHTML = `<span class="tnav-icon">${item.icon}</span>${item.label}`;
+    btn.onclick = () => showView(item.view, btn, item.label);
+    nav.appendChild(btn);
+  });
+
+  // User chip — show email as name, role as label
+  const av = document.getElementById('ucAvatar');
+  av.textContent = cfg.initials;
+  av.style.cssText = cfg.avatarStyle;
+  // Show truncated email
+  const shortEmail = currentUserEmail.length > 22
+    ? currentUserEmail.substring(0, 20) + '…'
+    : currentUserEmail;
+  document.getElementById('ucName').textContent = shortEmail || cfg.org;
+  const roleEl = document.getElementById('ucRole');
+  roleEl.textContent = cfg.icon + ' ' + cfg.label;
+  roleEl.style.cssText = cfg.roleStyle;
+
+  // First view
+  const first = cfg.nav[0];
+  showView(first.view, document.getElementById('tn-' + first.view), first.label);
+}
+
+function logout() {
+  document.getElementById('appShell').style.display = 'none';
+  document.getElementById('loginPage').style.display = 'flex';
+  currentRole = null;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const vr = document.getElementById('verificationResult');
+  if (vr) { vr.style.display = 'none'; vr.innerHTML = ''; }
+  const vu = document.getElementById('verificationUUID');
+  if (vu) vu.value = '';
+}
+
+/* ─────────────────────────────────────────────────────────────
+   VIEW NAVIGATION
+───────────────────────────────────────────────────────────── */
+function showView(viewId, navBtn, title) {
+  document.querySelectorAll('.tnav-item').forEach(b => b.classList.remove('active'));
+  if (navBtn) navBtn.classList.add('active');
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const target = document.getElementById('v-' + viewId);
+  if (target) target.classList.add('active');
+}
+
+function goView(rolePrefix, id) {
+  const cfg = ROLES[currentRole];
+  const item = cfg.nav.find(n => n.id === id);
+  if (!item) return;
+  const btn = document.getElementById('tn-' + item.view);
+  showView(item.view, btn, item.label);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MODALS
+───────────────────────────────────────────────────────────── */
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+window.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('open');
+});
+
+/* ─────────────────────────────────────────────────────────────
+   TOAST
+───────────────────────────────────────────────────────────── */
+function toast(msg, type = 'success') {
+  const icons = { success:'✅', danger:'❌', warning:'⚠️', info:'ℹ️' };
+  const el = document.createElement('div');
+  el.className = `toast t-${type}`;
+  el.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${msg}</span>`;
+  document.getElementById('toastArea').appendChild(el);
+  setTimeout(() => el.style.opacity = '0', 3600);
+  setTimeout(() => el.remove(), 4000);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MANUFACTURER ACTIONS
+───────────────────────────────────────────────────────────── */
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+function isValidUUID(uuid) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid);
+}
+
+function createUnit() {
+  const dt = document.getElementById('mfrDrugType').value;
+  const expiry = document.getElementById('mfrExpiry').value;
+  if (!dt) { toast('Please select a drug type with a valid license', 'danger'); return; }
+  if (!expiry) { toast('Please select an expiration date', 'danger'); return; }
+  const today = new Date().toISOString().split('T')[0];
+  if (expiry <= today) { toast('Expiration date must be in the future', 'danger'); return; }
+  const uuid = generateUUID();
+  MEDICINE_DB[uuid] = {
+    drugType: document.getElementById('mfrDrugType').options[document.getElementById('mfrDrugType').selectedIndex].text.split(' (')[0],
+    manufacturer: 'PharmaCorp Ltd', owner: 'PharmaCorp Ltd (Manufacturer)',
+    status: 'Active', expiry,
+    licenseId: document.getElementById('mfrDrugType').options[document.getElementById('mfrDrugType').selectedIndex].getAttribute('data-license'),
+    transfers: [{ from:'System', to:'PharmaCorp Ltd', action:'Created', date:today }]
+  };
+  MFR_UNITS[uuid] = { drugType: MEDICINE_DB[uuid].drugType, status: 'In Stock' };
+  toast(`Unit created · UUID: ${uuid}`, 'success');
+  document.getElementById('createdUUIDBox').style.display = 'block';
+  document.getElementById('createdUUID').textContent = uuid;
+}
+
+function lookupUnit() {
+  const uuid = document.getElementById('transferUUID').value.trim();
+  const infoDiv  = document.getElementById('transferUnitInfo');
+  const infoText = document.getElementById('transferUnitText');
+  if (!uuid) { toast('Please enter a unit UUID', 'danger'); return; }
+  const unit = MFR_UNITS[uuid];
+  if (unit) {
+    infoText.innerHTML = `<strong>${uuid}</strong> — ${unit.drugType} · Status: <strong>${unit.status}</strong>`;
+    infoDiv.style.display = 'block';
+  } else {
+    infoDiv.style.display = 'none';
+    toast('Unit not found or not owned by you', 'danger');
+  }
+}
+
+function submitTransfer() {
+  const ph = document.getElementById('transferTargetPharmacy').value;
+  if (!ph) { toast('Please select a destination pharmacy', 'danger'); return; }
+  toast(`Unit transferred to ${ph}. Audit trail updated.`, 'success');
+  document.getElementById('transferUnitInfo').style.display = 'none';
+  document.getElementById('transferUUID').value = '';
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PHARMACY ACTIONS
+───────────────────────────────────────────────────────────── */
+function phLookupUnit() {
+  const uuid = document.getElementById('phUUID').value.trim();
+  const infoDiv  = document.getElementById('phUnitInfo');
+  const infoText = document.getElementById('phUnitInfoText');
+  if (!uuid) { toast('Please enter a unit UUID', 'danger'); return; }
+  if (!isValidUUID(uuid)) { toast('Invalid UUID format — must match xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', 'danger'); return; }
+  const prefix = uuid.split('-')[0];
+  const shortMatch = Object.entries(PH_UNITS).find(([k]) => k === prefix);
+  const fullMatch  = MEDICINE_DB[uuid];
+  const unit = fullMatch || (shortMatch ? { drugType:shortMatch[1].drugType, status:shortMatch[1].status, expiry:shortMatch[1].expiry } : null);
+  if (unit) {
+    infoText.innerHTML = `Found: <strong>${unit.drugType}</strong> · Expiry: <strong>${unit.expiry || ''}</strong> · Status: <strong>${unit.status}</strong>`;
+    infoDiv.style.display = 'block';
+    document.getElementById('phDispenseBtn').dataset.uuid = uuid;
+  } else {
+    infoDiv.style.display = 'none';
+    toast('Unit not found in your inventory', 'danger');
+  }
+}
+
+function dispenseToCtizen() {
+  const citizenId  = document.getElementById('phCitizenId').value.trim();
+  const patientName= document.getElementById('phPatientName').value.trim();
+  const btn  = document.getElementById('phDispenseBtn');
+  const uuid = btn.dataset.uuid;
+  if (!citizenId) { toast('Please enter a Citizen ID', 'danger'); return; }
+  if (!uuid) { toast('Please look up a unit first', 'danger'); return; }
+  const today = new Date().toISOString().split('T')[0];
+  const displayName = patientName || citizenId;
+  if (MEDICINE_DB[uuid]) {
+    MEDICINE_DB[uuid].owner = `${displayName} (Citizen)`;
+    MEDICINE_DB[uuid].status = 'Dispensed';
+    MEDICINE_DB[uuid].transfers.push({ from:'City Health Pharmacy', to:displayName, action:'Dispensed', date:today });
+    const prefix = uuid.split('-')[0];
+    delete PH_UNITS[prefix];
+  }
+  toast(`Medicine dispensed to ${displayName}. Transfer recorded.`, 'success');
+  document.getElementById('phUnitInfo').style.display = 'none';
+  document.getElementById('phUUID').value = '';
+  document.getElementById('phCitizenId').value = '';
+  document.getElementById('phPatientName').value = '';
+  btn.dataset.uuid = '';
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PUBLIC VERIFY
+───────────────────────────────────────────────────────────── */
+function verifyMed() {
+  const uuid = document.getElementById('verificationUUID').value.trim();
+  const resultDiv = document.getElementById('verificationResult');
+  if (!uuid) { toast('Please enter a UUID', 'danger'); return; }
+
+  if (!isValidUUID(uuid)) {
+    resultDiv.innerHTML = `<div class="card" style="max-width:640px;margin:0 auto 20px;"><div class="card-body"><div class="alert a-danger" style="margin:0;"><span class="alert-icon">❌</span><div><strong>Invalid UUID format.</strong> Please enter a valid UUID in the format <code>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code>.</div></div><div style="text-align:center;margin-top:16px;"><button class="btn btn-primary" onclick="document.getElementById('verificationUUID').value='';document.getElementById('verificationResult').style.display='none';">Try again</button></div></div></div>`;
+    resultDiv.style.display = 'block';
+    return;
+  }
+
+  const med = MEDICINE_DB[uuid];
+  if (!med) {
+    resultDiv.innerHTML = `<div class="card" style="max-width:640px;margin:0 auto 20px;"><div class="card-body"><div class="alert a-danger" style="margin:0;"><span class="alert-icon">❌</span><div><strong>No unit found for this code.</strong> Check the code and try again. If you believe this is a valid medicine, contact your pharmacy or regulatory authority immediately.</div></div><div style="text-align:center;margin-top:16px;"><button class="btn btn-primary" onclick="document.getElementById('verificationUUID').value='';document.getElementById('verificationResult').style.display='none';">Try again</button></div></div></div>`;
+    resultDiv.style.display = 'block';
+    return;
+  }
+
+  const statusMap = { Active:'p-active', Dispensed:'p-dispensed', 'In Stock':'p-stock' };
+  const chainHTML = med.transfers.map((t, i) => `
+    <div class="chain-item">
+      <div class="chain-num">${i + 1}</div>
+      <div class="chain-detail">
+        <div class="chain-route">${t.from} → ${t.to}
+          <span class="pill ${t.action==='Created'?'p-active':t.action==='Dispensed'?'p-dispensed':'p-info'}" style="margin-left:8px;">${t.action}</span>
+        </div>
+        <div class="chain-date">${t.date}</div>
+      </div>
+    </div>`).join('');
+
+  resultDiv.innerHTML = `
+    <div class="card" style="max-width:640px;margin:0 auto 20px;">
+      <div class="card-head"><h2>✅ Verification Result</h2></div>
+      <div class="card-body">
+        <div class="alert a-success" style="margin-bottom:16px;"><span class="alert-icon">✅</span><div><strong>Verified!</strong> This medicine unit is authentic and traceable.</div></div>
+        <div class="info-row"><div class="info-label">Unit ID</div><div class="info-value"><code>${uuid}</code></div></div>
+        <div class="info-row"><div class="info-label">Drug type</div><div class="info-value">${med.drugType}</div></div>
+        <div class="info-row"><div class="info-label">Status</div><div class="info-value"><span class="pill ${statusMap[med.status] || 'p-info'}">${med.status}</span></div></div>
+        <div class="info-row"><div class="info-label">Current owner</div><div class="info-value">${med.owner}</div></div>
+        <div class="info-row"><div class="info-label">Expiration</div><div class="info-value">${med.expiry}</div></div>
+        <div class="divider"></div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:12px;">Transfer history</div>
+        <div class="chain">${chainHTML}</div>
+        <div style="text-align:center;margin-top:20px;">
+          <button class="btn" onclick="document.getElementById('verificationUUID').value='';document.getElementById('verificationResult').style.display='none';">🔍 Verify another</button>
+        </div>
+      </div>
+    </div>`;
+  resultDiv.style.display = 'block';
+}
+
+/* ─────────────────────────────────────────────────────────────
+   AUDIT EXPORT
+───────────────────────────────────────────────────────────── */
+function exportAuditCSV() {
+  const rows = [['Timestamp','Event','Actor','Entity','Details']];
+  document.querySelectorAll('#v-gov-audit .table tbody tr').forEach(tr => {
+    const cells = Array.from(tr.querySelectorAll('td')).map(td => td.innerText.replace(/\n/g,' ').trim());
+    rows.push(cells);
+  });
+  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'audit-trail.csv';
+  a.click();
+  toast('Audit log exported as CSV', 'success');
+}
+</script>
+</body>
+</html>
