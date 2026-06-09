@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Agent Hero</title>
+<title>Cap Actix</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <!-- EmailJS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -612,7 +612,7 @@ code { font-family:'SF Mono','Fira Mono','Courier New',monospace; font-size:11px
 ═══════════════════════════════════════════════════════════ -->
 <div id="emailGate">
   <div class="gate-logo">
-    <h1>Agent<span>Hero</span></h1>
+    <h1>Cap<span>Actix</span></h1>
     <!-- <p>Medical Supply Chain Management <strong>Prototype</strong></p> -->
   </div>
   <div class="email-form">
@@ -625,7 +625,7 @@ code { font-family:'SF Mono','Fira Mono','Courier New',monospace; font-size:11px
       <div class="form-error" id="emailError">Please enter a valid email address.</div>
     </div>
     <button class="submit-btn" id="gateSubmitBtn" onclick="handleEmailSubmit()">
-      <span id="gateBtnText">Login to Watch Demo →</span>
+      <span id="gateBtnText">Launch Demo →</span>
       <div class="gate-spinner" id="gateSpinner"></div>
     </button>
   </div>
@@ -659,7 +659,7 @@ code { font-family:'SF Mono','Fira Mono','Courier New',monospace; font-size:11px
         </div>
         <div id="pmsLoginErr" style="display:none;color:#dc2626;font-size:12px;margin-bottom:10px;">Invalid credentials. Try admin / admin123.</div>
         <button class="pms-login-btn" onclick="pmsDoLogin()">Sign In →</button>
-        <div class="pms-login-hint">Powered by Agent<strong>Hero</strong> · Demo environment</div>
+        <!-- <div class="pms-login-hint">Powered by Agent<strong>Hero</strong> · Demo environment</div> -->
       </div>
     </div>
   </div>
@@ -1600,7 +1600,7 @@ function handleEmailSubmit() {
   // Send email notification, then proceed regardless of outcome
   sendLoginNotification(email).finally(() => {
     btn.disabled = false;
-    btnTxt.textContent = 'Login to Watch Demo →';
+    btnTxt.textContent = 'Launch Demo →';
     spinner.style.display = 'none';
     showLoginPage();
   });
