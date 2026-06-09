@@ -1,0 +1,202 @@
+{
+  "project": {
+    "name": "ClarityPMS",
+    "tagline": "Where accounting feels effortless",
+    "type": "Practice Management System (PMS) SaaS",
+    "theme_preference": "Light mode default with dark mode toggle",
+    "design_archetype": "Archetype 4 (Swiss & High-Contrast) adapted for Data-Heavy Dashboard. Linear meets QuickBooks. High density, structural grids, zero decorative gradients."
+  },
+  "colors": {
+    "brand": {
+      "primary": "#1A56DB",
+      "secondary": "#0E7490",
+      "success": "#065F46",
+      "warning": "#92400E",
+      "danger": "#991B1B"
+    },
+    "css_variables_light": {
+      "--background": "0 0% 100%",
+      "--foreground": "222.2 84% 4.9%",
+      "--card": "0 0% 100%",
+      "--card-foreground": "222.2 84% 4.9%",
+      "--popover": "0 0% 100%",
+      "--popover-foreground": "222.2 84% 4.9%",
+      "--primary": "221 79% 48%",
+      "--primary-foreground": "210 40% 98%",
+      "--secondary": "193 82% 31%",
+      "--secondary-foreground": "210 40% 98%",
+      "--success": "163 88% 20%",
+      "--success-foreground": "210 40% 98%",
+      "--warning": "33 83% 31%",
+      "--warning-foreground": "210 40% 98%",
+      "--danger": "0 70% 35%",
+      "--danger-foreground": "210 40% 98%",
+      "--muted": "210 40% 96.1%",
+      "--muted-foreground": "215.4 16.3% 46.9%",
+      "--accent": "210 40% 96.1%",
+      "--accent-foreground": "222.2 47.4% 11.2%",
+      "--border": "214.3 31.8% 91.4%",
+      "--input": "214.3 31.8% 91.4%",
+      "--ring": "221 79% 48%",
+      "--radius": "0.5rem"
+    },
+    "css_variables_dark": {
+      "--background": "222.2 84% 4.9%",
+      "--foreground": "210 40% 98%",
+      "--card": "222.2 84% 4.9%",
+      "--card-foreground": "210 40% 98%",
+      "--popover": "222.2 84% 4.9%",
+      "--popover-foreground": "210 40% 98%",
+      "--primary": "217.2 91.2% 59.8%",
+      "--primary-foreground": "222.2 47.4% 11.2%",
+      "--secondary": "193 82% 31%",
+      "--secondary-foreground": "210 40% 98%",
+      "--success": "163 88% 20%",
+      "--success-foreground": "222.2 47.4% 11.2%",
+      "--warning": "33 83% 31%",
+      "--warning-foreground": "222.2 47.4% 11.2%",
+      "--danger": "0 70% 35%",
+      "--danger-foreground": "210 40% 98%",
+      "--muted": "217.2 32.6% 17.5%",
+      "--muted-foreground": "215 20.2% 65.1%",
+      "--accent": "217.2 32.6% 17.5%",
+      "--accent-foreground": "210 40% 98%",
+      "--border": "217.2 32.6% 17.5%",
+      "--input": "217.2 32.6% 17.5%",
+      "--ring": "224.3 76.3% 48%"
+    }
+  },
+  "typography": {
+    "font_family": "Inter, sans-serif",
+    "headings": {
+      "weight": "600-700",
+      "tracking": "tracking-tight",
+      "h1": "text-2xl md:text-3xl font-bold tracking-tight text-foreground",
+      "h2": "text-xl md:text-2xl font-semibold tracking-tight text-foreground",
+      "h3": "text-lg font-semibold text-foreground",
+      "h4": "text-base font-medium text-foreground"
+    },
+    "body": {
+      "weight": "400-500",
+      "base": "text-sm text-muted-foreground",
+      "small": "text-xs text-muted-foreground"
+    }
+  },
+  "spacing_and_layout": {
+    "grid": "8px system",
+    "corners": {
+      "cards": "8px (rounded-lg)",
+      "inputs": "6px (rounded-md)",
+      "pills_badges": "100px (rounded-full)"
+    },
+    "chrome": {
+      "sidebar": "w-64 default, w-16 collapsed. Items active state: filled background pill (bg-primary/10 text-primary); hover: subtle bg tint (bg-muted).",
+      "header": "h-16 border-b border-border bg-background/95 backdrop-blur. Contains global search, notification bell, user avatar, role switcher, dark/light toggle."
+    },
+    "table_density": "High density. Padding py-2 px-3. Right-aligned numbers. 1px bottom border per row."
+  },
+  "components": {
+    "kpi_cards": {
+      "anatomy": "rounded-lg border border-border bg-card p-5. No heavy drop shadows (shadow-sm max). Top-right icon. Trend indicator pill (green/red) with percentage."
+    },
+    "badges": {
+      "style": "rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider",
+      "variants": {
+        "Active": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+        "Inactive": "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
+        "Pending": "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+        "Approved": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+        "Rejected": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+        "Draft": "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
+        "Sent": "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+        "Paid": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+        "Overdue": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+        "On Track": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+        "At Risk": "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+        "Critical": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+        "Healthy": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+        "Profitable": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+        "Break-Even": "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
+        "Loss": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+        "Optimal": "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+        "Needs Review": "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+      }
+    },
+    "charts": {
+      "library": "Recharts",
+      "palette": [
+        "#1A56DB",
+        "#0E7490",
+        "#065F46",
+        "#92400E",
+        "#991B1B",
+        "#64748B"
+      ],
+      "rules": "No gradients. 1px crisp strokes. Tooltips must be custom styled with 8px radius and 1px border. Gantt chart cells colored by status block."
+    },
+    "ai_assistant": {
+      "bubbles": {
+        "user": "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm p-4",
+        "ai": "bg-muted text-foreground rounded-2xl rounded-tl-sm p-4 border border-border"
+      },
+      "rules": "Embed Recharts charts inside AI bubbles for data queries. Scripted interactions."
+    },
+    "empty_states": {
+      "anatomy": "Flex column, centered. lucide-react icon (w-12 h-12 text-muted-foreground/50), h3 title, text-sm text-muted-foreground description, CTA button."
+    },
+    "loaders": {
+      "style": "Skeleton loaders (animate-pulse bg-muted) mocking table rows, KPI numbers, and chart bars."
+    },
+    "toasts": {
+      "placement": "Bottom-right",
+      "duration": "4s",
+      "style": "Match SaaS aesthetic: 1px border, shadow-md, 8px radius."
+    }
+  },
+  "media": {
+    "image_urls": {
+      "learning_center_thumbnails": [
+        {
+          "url": "https://images.pexels.com/photos/8062355/pexels-photo-8062355.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+          "description": "Financial accounting course thumbnail"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1511376868136-742c0de8c9a8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODh8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBsYXB0b3AlMjBhY2NvdW50aW5nJTIwb2ZmaWNlfGVufDB8fHx8MTc4MDg4OTMwNnww&ixlib=rb-4.1.0&q=85",
+          "description": "Modern software training thumbnail"
+        }
+      ],
+      "client_portal_banner": [
+        {
+          "url": "https://images.unsplash.com/photo-1709626011485-6fe000ea2dbc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGJsdWUlMjBnZW9tZXRyaWN8ZW58MHx8fHwxNzgwODg5MzA3fDA&ixlib=rb-4.1.0&q=85",
+          "description": "Abstract blue geometric banner for client portal header"
+        }
+      ],
+      "user_avatars": [
+        {
+          "url": "https://images.unsplash.com/photo-1758691736975-9f7f643d178e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTN8MHwxfHNlYXJjaHwzfHxwcm9mZXNzaW9uYWwlMjBjb3Jwb3JhdGUlMjB0ZWFtfGVufDB8fHx8MTc4MDg4OTMwN3ww&ixlib=rb-4.1.0&q=85",
+          "description": "CPA Team Avatar 1"
+        },
+        {
+          "url": "https://images.unsplash.com/photo-1573496130141-209d200cebd8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTN8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBjb3Jwb3JhdGUlMjB0ZWFtfGVufDB8fHx8MTc4MDg4OTMwN3ww&ixlib=rb-4.1.0&q=85",
+          "description": "CPA Team Avatar 2"
+        }
+      ]
+    }
+  },
+  "testing": {
+    "rules": [
+      "All interactive elements MUST have a data-testid attribute.",
+      "Use kebab-case and role-based naming (e.g., data-testid='sidebar-nav-clients')."
+    ]
+  },
+  "instructions_to_main_agent": [
+    "You are building 20 specific screens. Rely on standard Shadcn UI components but override border radii to match the guidelines (8px cards, 6px inputs).",
+    "CRITICAL: Generate `.js` or `.jsx` files only. DO NOT generate `.tsx` or `.ts` files.",
+    "Linear meets QuickBooks: The UI must be highly functional, dense, and clean. Strip away unnecessary drop shadows and gradients.",
+    "Use Phosphor Icons or Lucide React for consistent line-art iconography.",
+    "Data Mocking: Create deep, realistic JSON objects for CPAs (e.g., '1040 Tax Returns', 'Q3 Bookkeeping', 'Audit for Acme Corp').",
+    "Gantt Charts: Use Recharts grouped horizontal bar charts or map pure HTML/Tailwind flex blocks to build the Resource Allocation view.",
+    "For Client Portal Preview, wrap the view in a 'browser chrome' mock to differentiate it from the admin layout.",
+    "Always apply data-testid to everything clickable or significant for testing purposes."
+  ]
+}
